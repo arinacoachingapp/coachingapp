@@ -146,7 +146,17 @@ export default function CareerCompanion() {
         },
         body: JSON.stringify({ sessionId: id }),
       });
-      const data = await res.json();
+      const raw = await res.text();
+      let data;
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        throw new Error(
+          res.ok
+            ? 'Role card API returned a non-JSON response'
+            : `Role card API unavailable (${res.status}). Check the Vercel function deploy and env vars.`
+        );
+      }
       if (!res.ok) throw new Error(data.error || 'Failed to generate role card');
 
       setRoleCard(data.roleCard);
