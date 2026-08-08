@@ -8,7 +8,7 @@ Requires Node.js 20+ (`.nvmrc` pins Node 24).
 
 ```bash
 nvm use
-cp .env.example .env   # then fill in Supabase + Gemini keys
+cp .env.example .env   # then fill in Supabase + OpenRouter keys
 npm install
 npm run dev
 ```
@@ -23,5 +23,5 @@ npm run dev
 ## Notes
 
 - Auth and sessions use Supabase (`VITE_SUPABASE_*`).
-- Role-card generation uses Gemini (`GEMINI_API_KEY`, server-side only).
+- Role-card generation uses OpenRouter (`OPENROUTER_API_KEY`) with ChatGPT 5.6 Luna by default (`OPENROUTER_MODEL=openai/gpt-5.6-luna`).
 - `/career` redirects to `/`.

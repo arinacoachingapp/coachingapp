@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const ROLE_CARD_KEYS = [
   'headline',
@@ -15,6 +14,9 @@ const ROLE_CARD_KEYS = [
   'extra_thoughts',
   'ending',
 ]
+
+const DEFAULT_MODEL = 'openai/gpt-5.6-luna'
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
 function getUserSupabase(accessToken, env) {
   const supabaseUrl = env.VITE_SUPABASE_URL
@@ -72,12 +74,52 @@ INTERVIEW TRANSCRIPT:
 ${qaBlock}`
 }
 
-function parseGeminiJson(text) {
+function parseRoleCardJson(text) {
   let cleaned = text.trim()
   if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7)
   else if (cleaned.startsWith('```')) cleaned = cleaned.slice(3)
   if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3)
   return JSON.parse(cleaned.trim())
+}
+
+async function generateWithOpenRouter(prompt, env) {
+  const apiKey = env.OPENROUTER_API_KEY
+  if (!apiKey) {
+    throw new Error('OpenRouter API key not configured')
+  }
+
+  const model = env.OPENROUTER_MODEL || DEFAULT_MODEL
+  const siteUrl = env.VITE_SITE_URL || 'http://localhost:5173'
+
+  const response = await fetch(OPENROUTER_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': siteUrl,
+      'X-Title': 'Career Companion',
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.4,
+      response_format: { type: 'json_object' },
+    }),
+  })
+
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const message =
+      data?.error?.message || data?.error || `OpenRouter request failed (${response.status})`
+    throw new Error(typeof message === 'string' ? message : JSON.stringify(message))
+  }
+
+  const content = data?.choices?.[0]?.message?.content
+  if (!content) {
+    throw new Error('No content generated')
+  }
+
+  return typeof content === 'string' ? content : JSON.stringify(content)
 }
 
 /** Shared handler for Vite middleware and production Express. */
@@ -131,26 +173,19 @@ export async function handleGenerateRoleCard({ authorization, sessionId, env }) 
     return { status: 400, body: { error: 'Interview not complete' } }
   }
 
-  const geminiApiKey = env.GEMINI_API_KEY
-  if (!geminiApiKey) {
-    return { status: 500, body: { error: 'Gemini API key not configured' } }
-  }
-
-  const genAI = new GoogleGenerativeAI(geminiApiKey)
-  const model = genAI.getGenerativeModel({ model: 'gemini-3.1-pro-preview' })
-
-  const result = await model.generateContent(buildRoleCardPrompt(transcript))
-  const generatedText = result.response.text()
-
-  if (!generatedText) {
-    return { status: 500, body: { error: 'No content generated' } }
+  let generatedText
+  try {
+    generatedText = await generateWithOpenRouter(buildRoleCardPrompt(transcript), env)
+  } catch (error) {
+    console.error('OpenRouter generation failed:', error)
+    return { status: 500, body: { error: error.message || 'Failed to generate role card' } }
   }
 
   let roleCard
   try {
-    roleCard = parseGeminiJson(generatedText)
+    roleCard = parseRoleCardJson(generatedText)
   } catch {
-    console.error('Failed to parse Gemini response:', generatedText)
+    console.error('Failed to parse OpenRouter response:', generatedText)
     return { status: 500, body: { error: 'Failed to parse generated role card' } }
   }
 
