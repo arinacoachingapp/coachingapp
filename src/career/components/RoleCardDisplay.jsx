@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ROLE_CARD_SECTIONS } from '../lib/careerDb';
 import { AnimatedCollapse, CollapsiblePanel, SectionToggle } from './AnimatedToggles';
 
@@ -44,12 +44,24 @@ const SECTION_GROUPS = [
   {
     id: 'arrived',
     title: 'How you arrived',
-    keys: ['getting_the_role', 'business_context', 'expectations'],
+    keys: [
+      'getting_the_role',
+      'business_context',
+      'mandate',
+      'why_chosen',
+      'saying_yes',
+      'expectations', // legacy
+    ],
   },
   {
     id: 'people',
-    title: 'People & environment',
-    keys: ['manager_and_team', 'environment_factor', 'getting_into_the_role'],
+    title: 'People & settling in',
+    keys: [
+      'getting_into_the_role',
+      'people',
+      'manager_and_team', // legacy
+      'environment_factor', // legacy
+    ],
   },
   {
     id: 'daytoday',
@@ -80,7 +92,7 @@ function sectionByKey(roleCard) {
   };
 }
 
-function SectionCard({ section, featured = false, index = 0 }) {
+function SectionCard({ section, featured = false, index = 0, editing = false, onChange }) {
   if (featured) {
     return (
       <article className="relative overflow-hidden rounded-sm bg-stone-900 px-6 py-7 text-[#F7F5F1] shadow-[0_8px_30px_rgba(28,25,23,0.12)] sm:px-8 sm:py-8">
@@ -88,9 +100,18 @@ function SectionCard({ section, featured = false, index = 0 }) {
         <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-stone-400">
           {section.label}
         </p>
-        <p className="mt-4 font-serif text-xl leading-relaxed sm:text-2xl sm:leading-relaxed">
-          {section.text}
-        </p>
+        {editing ? (
+          <textarea
+            value={section.text}
+            onChange={(e) => onChange?.(section.key, e.target.value)}
+            rows={3}
+            className="mt-4 w-full resize-none rounded-sm border border-white/20 bg-white/10 px-3 py-2 font-serif text-xl leading-relaxed text-[#F7F5F1] outline-none"
+          />
+        ) : (
+          <p className="mt-4 font-serif text-xl leading-relaxed sm:text-2xl sm:leading-relaxed">
+            {section.text}
+          </p>
+        )}
       </article>
     );
   }
@@ -105,16 +126,25 @@ function SectionCard({ section, featured = false, index = 0 }) {
           <h3 className="text-[10px] font-medium uppercase tracking-[0.22em] text-stone-400">
             {section.label}
           </h3>
-          <p className="mt-3 whitespace-pre-wrap font-serif text-base leading-relaxed text-stone-700">
-            {section.text}
-          </p>
+          {editing ? (
+            <textarea
+              value={section.text}
+              onChange={(e) => onChange?.(section.key, e.target.value)}
+              rows={3}
+              className="mt-3 w-full resize-none rounded-sm border border-stone-200 bg-stone-50 px-3 py-2 font-serif text-base leading-relaxed text-stone-700 outline-none focus:border-stone-400"
+            />
+          ) : (
+            <p className="mt-3 whitespace-pre-wrap font-serif text-base leading-relaxed text-stone-700">
+              {section.text}
+            </p>
+          )}
         </div>
       </div>
     </article>
   );
 }
 
-function GroupBlock({ title, sections, startIndex, open, onToggle }) {
+function GroupBlock({ title, sections, startIndex, open, onToggle, editing, onChange }) {
   if (!sections.length) return null;
 
   return (
@@ -123,7 +153,13 @@ function GroupBlock({ title, sections, startIndex, open, onToggle }) {
       <CollapsiblePanel open={open}>
         <div className="space-y-3 pt-1">
           {sections.map((section, i) => (
-            <SectionCard key={section.key} section={section} index={startIndex + i} />
+            <SectionCard
+              key={section.key}
+              section={section}
+              index={startIndex + i}
+              editing={editing}
+              onChange={onChange}
+            />
           ))}
         </div>
       </CollapsiblePanel>
@@ -131,15 +167,23 @@ function GroupBlock({ title, sections, startIndex, open, onToggle }) {
   );
 }
 
-export default function RoleCardDisplay({ roleCard, transcript, onStartNew }) {
+export default function RoleCardDisplay({ roleCard, transcript, onStartNew, onSave }) {
   const [transcriptOpen, setTranscriptOpen] = useState(false);
   const [openSections, setOpenSections] = useState(() =>
     defaultOpenState(SECTION_GROUPS.map((g) => g.id))
   );
+  const [draft, setDraft] = useState(roleCard);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setDraft(roleCard);
+  }, [roleCard, editing]);
 
   if (!roleCard) return null;
 
-  const getSection = sectionByKey(roleCard);
+  const card = editing ? draft : roleCard;
+  const getSection = sectionByKey(card);
   const insight = getSection('biggest_insight');
 
   const groups = SECTION_GROUPS.map((group) => ({
@@ -149,6 +193,24 @@ export default function RoleCardDisplay({ roleCard, transcript, onStartNew }) {
 
   const toggleSection = (id) => {
     setOpenSections((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleFieldChange = (key, value) => {
+    setDraft((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSave = async () => {
+    if (!onSave) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave(draft);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   let sectionCounter = 0;
@@ -175,18 +237,60 @@ export default function RoleCardDisplay({ roleCard, transcript, onStartNew }) {
           >
             Your role card
           </motion.p>
-          {roleCard.headline && (
-            <motion.h1
-              variants={headlineVariants}
-              className="mx-auto mt-5 max-w-lg font-serif text-3xl font-medium leading-[1.2] text-stone-900 sm:text-[2.35rem]"
-            >
-              {roleCard.headline}
-            </motion.h1>
-          )}
+          {card.headline &&
+            (editing ? (
+              <textarea
+                value={draft.headline || ''}
+                onChange={(e) => handleFieldChange('headline', e.target.value)}
+                rows={2}
+                className="mx-auto mt-5 w-full max-w-lg resize-none rounded-sm border border-stone-200 bg-white px-3 py-2 text-center font-serif text-3xl font-medium leading-[1.2] text-stone-900 outline-none focus:border-stone-400 sm:text-[2.35rem]"
+              />
+            ) : (
+              <motion.h1
+                variants={headlineVariants}
+                className="mx-auto mt-5 max-w-lg font-serif text-3xl font-medium leading-[1.2] text-stone-900 sm:text-[2.35rem]"
+              >
+                {card.headline}
+              </motion.h1>
+            ))}
           <motion.div
             variants={lineVariants}
             className="mx-auto mt-8 h-px w-full max-w-xs origin-center bg-gradient-to-r from-transparent via-stone-200 to-transparent"
           />
+          {onSave && (
+            <div className="mt-6 flex justify-center gap-3">
+              {!editing ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraft(roleCard);
+                    setEditing(true);
+                  }}
+                  className="text-xs font-medium uppercase tracking-[0.15em] text-stone-400 hover:text-stone-700"
+                >
+                  Edit card
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(false)}
+                    className="text-xs font-medium uppercase tracking-[0.15em] text-stone-400 hover:text-stone-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="text-xs font-medium uppercase tracking-[0.15em] text-stone-700 hover:text-stone-900 disabled:opacity-50"
+                  >
+                    {saving ? 'Saving…' : 'Save'}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="space-y-6 px-5 pb-8 sm:space-y-8 sm:px-8 sm:pb-10">
@@ -200,7 +304,12 @@ export default function RoleCardDisplay({ roleCard, transcript, onStartNew }) {
               />
               <CollapsiblePanel open={openSections.insight}>
                 <div className="pt-1">
-                  <SectionCard section={insight} featured />
+                  <SectionCard
+                    section={insight}
+                    featured
+                    editing={editing}
+                    onChange={handleFieldChange}
+                  />
                 </div>
               </CollapsiblePanel>
             </motion.section>
@@ -217,6 +326,8 @@ export default function RoleCardDisplay({ roleCard, transcript, onStartNew }) {
                 startIndex={startIndex}
                 open={!!openSections[group.id]}
                 onToggle={() => toggleSection(group.id)}
+                editing={editing}
+                onChange={handleFieldChange}
               />
             );
           })}
@@ -235,9 +346,16 @@ export default function RoleCardDisplay({ roleCard, transcript, onStartNew }) {
               {transcript.map((item) => (
                 <div key={item.question_key} className="border-l-2 border-stone-100 pl-4">
                   <p className="text-[10px] font-medium uppercase tracking-wider text-stone-400">
-                    Question {item.question_number}
+                    {item.question_key || `Question ${item.question_number}`}
                   </p>
                   <p className="mt-1 text-sm text-stone-500">{item.question_text}</p>
+                  {item.probes?.length > 0 && (
+                    <ul className="mt-2 space-y-1 text-xs italic text-stone-400">
+                      {item.probes.map((p) => (
+                        <li key={p}>Follow-up: {p}</li>
+                      ))}
+                    </ul>
+                  )}
                   <p className="mt-2 whitespace-pre-wrap font-serif text-sm leading-relaxed text-stone-700">
                     {item.response_text || '—'}
                   </p>

@@ -7,6 +7,18 @@
   "functions": {
     "api/career/generate-role-card.js": {
       "maxDuration": 60
+    },
+    "api/career/interview-turn.js": {
+      "maxDuration": 60
+    },
+    "api/career/speak.js": {
+      "maxDuration": 60
+    },
+    "api/career/transcribe.js": {
+      "maxDuration": 60
+    },
+    "api/admin/[...path].js": {
+      "maxDuration": 30
     }
   }
 }

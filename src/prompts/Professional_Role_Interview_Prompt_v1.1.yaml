@@ -1,0 +1,2142 @@
+# =============================================================
+# PROFESSIONAL ROLE INTERVIEW PROMPT — QUESTION BANK
+# version: 1.1
+# date: 2026-08-13
+# status: COMPLETE. All sections drafted (Q1-Q21).
+#
+# CHANGES FROM v1.0
+#   - Q11 and Q19 distress handling revised to a FIRST-ANSWER
+#     GATE. A low point is not automatically distress; the
+#     person's first spontaneous answer is the decision point.
+#   - Q19 "push for the story" softened to curiosity.
+#   - Q7 cut flag WITHDRAWN. Retained.
+#
+# THIS FILE IS DATA, NOT A PROMPT. Roughly half its bulk is
+# design rationale written for the team, not for the model. It
+# pairs with two prompts:
+#   - P1 interviewer prompt — conducts the session, reads this
+#     bank. Delivered separately as
+#     Professional_Role_Interviewer_P1_v1.1.md
+#   - P2 role card prompt — not yet drafted
+#
+# The split is deliberate. A single context that both interviews
+# and writes the card starts pre-composing card sections while
+# the person is still talking — it listens for material it can
+# file rather than for what is being said, and probing quality
+# drops. The split also allows cards to be REGENERATED from
+# stored transcripts when card logic changes, without re-running
+# a single pilot session.
+#
+# VERSIONING: every pilot session must record the version triple
+# (interviewer / bank / card) it ran on. Without it, feedback
+# cannot be attributed and the pilot data is nearly worthless
+# for iteration.
+#
+# NAMING: this file is the PROFESSIONAL ROLE interview. Later
+# interviews (other domains, other objectives) reuse the same
+# record schema and doctrine structure under their own names.
+# =============================================================
+
+meta:
+  interview_name: "Professional Role"
+  session_length: "25-30 minutes"
+  questions_total: 21
+  sections: [frame, arrival, macro, role_system, micro, exit]
+  probe_budget: "8-10 across the session"
+
+# -------------------------------------------------------------
+# SESSION ARC
+# -------------------------------------------------------------
+
+session_arc:
+  order: >
+    Frame (Q1-Q4) -> Arrival (Q5-Q9) -> Macro (Q10-Q11) ->
+    Role System (Q12-Q17) -> Micro (Q18) -> Exit (Q19-Q21)
+  rationale: >
+    Macro precedes the day-level material because meaning is
+    what survives and day-texture is reconstructed. People
+    remember what a role MEANT long after they have forgotten
+    how a Tuesday went. The order also spends the freshest
+    attention on the richest questions — an earlier draft
+    reached the meaning questions at minute eighteen, when
+    people are tiring.
+  micro_position: >
+    Micro sits late BY DESIGN. It is a recall invitation rather
+    than an elicitation, and it works precisely because twenty
+    minutes of talking has loosened material that a direct
+    question at minute five could not reach.
+  landing: >
+    Exit is a named SECTION, not a trailing question. The last
+    minutes are what people remember, and they follow the
+    heaviest material in the bank.
+  variance_note: >
+    Actual question count varies by path. A non-managerial
+    person with a single boss answers three of the six Role
+    System questions — so a real session runs 18-21 questions.
+    Time estimates must account for this.
+
+# -------------------------------------------------------------
+# METHOD vs PROTOTYPE
+# The method is multi-role. The prototype tests one role.
+# This distinction must survive into later versions.
+# -------------------------------------------------------------
+
+method_intent:
+
+  chronological_stance:
+    principle: >
+      The full method walks roles CHRONOLOGICALLY — earliest
+      first, forward to the present. Source: the A Method
+      (Geoff Smart), which uses chronological order for role
+      biography in hiring interviews.
+    rationale: >
+      People narrate forward and make sense backward. Asking
+      someone to work backward makes them do reconstruction
+      while also being asked to talk, and answer quality drops.
+      Forward order lets them simply tell the story.
+    secondary_benefit: >
+      Chronology also solves the role-selection problem more
+      elegantly than any criterion could. "Start at the
+      beginning" carries no implication about what makes a role
+      worth discussing, so it cannot contaminate the material
+      the way selection criteria would (see Q1 critical_note).
+
+  prototype_departure:
+    what: >
+      In the prototype the person picks ANY role, freely. The
+      opening says NOTHING about chronology.
+    why: >
+      The prototype holds one role and has no sequence to order.
+      Announcing a chronological stance the tool cannot deliver
+      would be a promise broken in the first thirty seconds.
+      Recent roles also carry richer material, and a pilot
+      participant who does exactly one session should not spend
+      it on a student job.
+    when_it_changes: >
+      From the multi-role version (v1.x of the PRODUCT, with the
+      Career Map as the artefact), the opening announces the
+      chronological stance and roles are taken forward from an
+      agreed starting point. Q1's critical_note about refusing
+      selection criteria becomes largely obsolete at that point.
+
+  consequence_for_the_pilot: >
+    If the method is fundamentally multi-role, a single Role
+    Card is a partial product by design — the prototype tests an
+    artefact that will not exist in isolation in the real thing.
+    Fine for Hypothesis A. It SHARPENS Hypothesis B: a single
+    card must deliver value with none of the cross-role pattern
+    material that most per-question objectives point toward. The
+    pilot is testing the harder case, and should be read
+    accordingly.
+
+# -------------------------------------------------------------
+# SCOPE DECISIONS
+# Departures from the V01 prototype scope document.
+# -------------------------------------------------------------
+
+scope_decisions:
+
+  within_role_persistence: >
+    IN scope. An interrupted session can be resumed. NARROW
+    exception to the "no cross-session memory" rule in the V01
+    document — it covers resuming one incomplete role interview
+    only. Multi-role assembly remains OUT for the prototype.
+    Minimum stored state: role name (Q1), last completed
+    question ID, transcript so far, version triple.
+
+  card_generation_gate: >
+    The Role Card (P2) generates ONLY on a complete interview.
+    On an incomplete one it returns nothing and signals
+    incomplete. Hard rule, not a judgement call: a model asked
+    to "produce a card if there is enough material" will always
+    find enough material. A partial card is missing the Macro
+    and Exit sections, which carry Hypothesis B — an incomplete
+    session would hand back something thin and damage the very
+    thing the pilot tests.
+
+  editable_card: >
+    The card must be editable at least for names, since spelling
+    correction is deferred to it (see doctrine: name_capture and
+    the exit_sequence). Small UI requirement with a real
+    dependency behind it — confirm with the builder that it is
+    in prototype scope.
+
+# =============================================================
+# SHARED DOCTRINE
+# Applies to every question. Per-question records carry only
+# what departs from this.
+# =============================================================
+
+doctrine:
+
+  probing_stance: >
+    The stance is CURIOSITY, not extraction. The register is a
+    biographer interviewing someone about their life, not an
+    assessor filling gaps. Probes open with WHAT, HOW, or simply
+    "tell me more" — never "why", which asks for justification
+    and puts people on the defensive about choices they may
+    already regret.
+
+    Standard forms: "What do you mean by that?" / "How so?" /
+    "How did you deal with that?" / "Tell me more." / "What's an
+    example?" / "What happened?" / "How did that feel?"
+
+    Probing also BUILDS RAPPORT. A well-placed probe is the
+    clearest evidence that someone is actually listening, and
+    the session's warmth depends on it as much as on the
+    phrasing of the questions themselves.
+
+  empathic_imagination: >
+    THE TEST FOR PROBING ON STORY QUESTIONS. Probe when a
+    statement is too generic to paint a picture — when a
+    listener could not see what happened. The objective is to
+    move from generic answers that could mean anything toward
+    specific detail that gives the PERSON real insight, not
+    merely the tool better data.
+
+    "It was quite political" fails the test. "The two directors
+    hadn't spoken in a year and I reported to both" passes. Same
+    length; only one can be seen.
+
+    SCOPE: applies to questions that ask for STORY — Q6, Q8,
+    Q10, Q11, and all of Role System, Micro and Exit. It does
+    NOT apply to the factual questions Q1-Q5, where a category
+    answer is exactly what is wanted and "Zalando, online
+    fashion" needs no picture. Those questions carry
+    effort_ceiling: low and must stay cheap.
+
+  name_capture: >
+    Names are captured AS HEARD throughout the session. No
+    spelling requests, no confirmation of any kind in the
+    moment. A name half-remembered or not remembered at all is
+    accepted without comment — never treated as a gap to
+    recover.
+
+    Spelling correction is DEFERRED to the end of the session
+    (see exit_sequence), before the card is generated.
+
+    RATIONALE: in the A Method the spelling request works as a
+    truth serum because it carries the implied threat of a
+    reference check. There is no verifier here and no adversary,
+    so that function does not transfer. What remains is accuracy
+    alone, and accuracy can be obtained later at no
+    conversational cost. Asking someone to spell a name during
+    the most emotionally loaded question in the session buys
+    precision with rapport, at the worst possible moment.
+
+  one_probe_at_a_time: >
+    Never stack two clarifications into a single turn. Stacking
+    recreates the multi-barrelled problem the question set was
+    revised to remove.
+
+  probe_in_their_words: >
+    Feed back the person's own language rather than rephrasing
+    the original question. "You said it got messy — what was
+    messy?" not "Could you elaborate?"
+
+  carry_their_naming: >
+    Reuse the person's own name for the role throughout the
+    session ("in the Berlin job", not "in this role").
+
+  tense_follows_q2: >
+    Q2 sets session tense. If the role is current, every
+    subsequent question is delivered in present tense. DELIVERY
+    rule, not a rewrite: the bank stores past-tense text as the
+    default and the tool converts. Questions whose meaning
+    changes with tense carry an explicit text_present variant.
+
+  never_comment_on_career_shape: >
+    The tool remarks on the content of an answer, never on the
+    shape of a career. No noticing of gaps, short tenures,
+    overlaps, sideways moves or upward progression — even
+    approvingly. Approving remarks are worse than neutral ones:
+    they signal the session has a view about what a good career
+    looks like. Applies at role scale too — no benchmarking a
+    ramp as fast or slow.
+
+  no_live_interpretation: >
+    The tool does not offer readings, patterns, reframes or
+    consolations during the session, however obvious they
+    become. It does not connect an answer to an earlier answer
+    out loud. It does not exonerate ("that wasn't on you"), does
+    not flatter ("I'm sure it was more than luck"), does not
+    diagnose. Interpretation belongs to the Role Card, and more
+    properly to the multi-role pattern layer where the person
+    reaches it themselves. A reading arrived at by the person is
+    worth a great deal; the same reading handed over by a
+    machine minutes after meeting them is worth very little —
+    and on one account of one role, it is not a judgement the
+    tool is positioned to make.
+
+  derive_never_ask: >
+    Classifications, values and patterns are DERIVED from what
+    the person says, never asked for directly. Direct questions
+    about values, agency or motivational patterns produce
+    rehearsed abstractions; the substance of what someone
+    actually did and moved toward is better evidence. Applies to
+    Q3 (industry), Q5 (route), Q8 (values via the five
+    dimensions) and Q9 (confidence-building signals).
+
+  absence_is_data: >
+    What a person does NOT raise unprompted is signal. Where a
+    question carries a capture frame, the tool records which
+    elements appeared spontaneously and does not prompt the
+    rest. Populating every category in every role flattens the
+    pattern the longitudinal layer depends on. Exceptions are
+    named explicitly in the question record (currently only
+    Q8's family_exception).
+
+  budget: >
+    Roughly 8-10 probes total across the session. When spent,
+    remaining questions are asked plain. Questions marked
+    priority_probe have first claim on the budget.
+
+  already_answered: >
+    If an earlier answer already covered a question,
+    acknowledge it and move on rather than asking cold. This is
+    not branching — the sequence is unchanged, only delivery.
+
+  never_probe_into_distress: >
+    OVERRIDES ALL PER-QUESTION RULES, including the explicit
+    instruction to push for the story at Q19. If an answer
+    carries grief, humiliation, anger or shame, acknowledge and
+    continue. Never ask for more detail. Vagueness is often
+    PROTECTIVE rather than lazy, and the tool cannot reliably
+    tell the difference from the outside — so where there is
+    doubt, stop.
+
+  never_probe_a_refusal: >
+    "I'd rather not" or "I don't remember" gets one
+    acknowledgement, then the next question.
+
+  brevity_is_not_insufficiency: >
+    A short answer that meets the bar is accepted as-is.
+
+# -------------------------------------------------------------
+# CROSS-SECTION CAPTURE
+# -------------------------------------------------------------
+
+cross_section_capture:
+
+  five_dimensions_are_session_level:
+    status: "OPEN METHODOLOGICAL QUESTION — revise after pilots."
+    observation: >
+      The five dimensions (fit, family, freedom, fortune, fun)
+      were introduced as a Q8 capture, but Macro answers feed
+      them too — a proud accomplishment and a low point both
+      reveal what mattered to the person, often more reliably
+      than a direct answer about why they took the job. The same
+      is true of Role System, Micro and Exit answers.
+    provisional_rule: >
+      Treat the dimensions as a SESSION-LEVEL capture, not a
+      Q8-level one. Record them wherever they surface, from any
+      answer, flagged with their source question.
+    why_now: >
+      Cheap to record now, expensive to reconstruct from
+      transcripts later. Whether it produces something coherent
+      enough to use is exactly what the first pilots will show.
+    not_yet_designed: >
+      The link from this capture to the Role Card, and onward to
+      the pattern-recognition layer, is NOT yet designed. Do not
+      infer methodology from the fact of capture.
+
+# =============================================================
+# QUESTIONS
+# =============================================================
+
+questions:
+
+# -------------------------------------------------------------
+# SECTION 1 — FRAME (Q1-Q4)
+# Factual. Cheap. empathic_imagination does NOT apply.
+# -------------------------------------------------------------
+
+  - id: Q1
+    section: frame
+    text: "So — which role are we talking about, and what was it called?"
+    context_dependency: standalone
+    effort_ceiling: low
+
+    objective: >
+      Establish the single role that anchors the whole session,
+      and register the person's own naming of it. The naming is
+      data: whether they lead with the title, the company, or
+      what they actually did tells you something before any
+      content arrives.
+
+    design_note: >
+      Deliberately tense-neutral. "Which role are we talking
+      about" works for a current or past role; the fork is
+      settled at Q2. "What WAS the role" would presuppose a past
+      role before the fork exists.
+
+    sufficient_when: >
+      One role is identifiable and the tool can refer back to
+      it. "I was head of ops at a logistics company" meets the
+      bar. So does "the Berlin job."
+
+    probe_if:
+      - They name only an employer or a period, with no role.
+      - They name two or more roles, or describe a progression
+        within one company as if it were a single role.
+      - They ask which role they should pick.
+
+    probe_examples:
+      - "And what were you doing there?"
+      - "Let's take one of those — which feels most worth
+        unpacking?"
+      - "Whichever one is most on your mind. There's no wrong
+        pick."
+
+    max_probes: 1
+
+    never_probe_for: >
+      Exact title wording, seniority level, or the gap between
+      title and reality. Chasing precision in the first thirty
+      seconds reads as a credentials check and undoes the
+      "trusted friend" framing.
+
+    critical_note: >
+      On "which one should I pick?" the tool must NOT offer
+      selection criteria ("one that was formative", "one where
+      you learned a lot"). Criteria instruct the person on what
+      kind of material to produce and contaminate everything
+      downstream. Refuse criteria warmly and let them choose.
+      NOTE: superseded in the multi-role version, where
+      chronology supplies the order without implying criteria.
+
+  - id: Q2
+    section: frame
+    text: "When did it start — month and year if you have it — and
+           when did it end?"
+    context_dependency: needs_role_named
+    effort_ceiling: low
+
+    objective: >
+      Two outcomes. (1) A bounded period, ideally MM/YYYY to
+      MM/YYYY, because the Career Map sequences and overlaps
+      roles on these dates — a role without a start point cannot
+      be placed on parallel tracks. (2) The tense fork: current
+      vs past, which governs the tense of every subsequent
+      question, makes Q19 conditional, and determines whether
+      the Role Card gets an "Ending" section.
+
+    design_note: >
+      Both dates are asked in ONE turn. An earlier draft used a
+      required follow-up to recover the end date after a
+      current/past fork; this phrasing makes that unnecessary.
+
+    current_role_rule: >
+      If the person indicates the role is current, accept
+      immediately, record end_date as null, and never ask for an
+      end date. Do not record "present" as a date value. Set
+      session tense to present for all downstream questions.
+
+    sufficient_when: >
+      A start point resolvable to at least a year, and either an
+      end point resolvable to at least a year or a confirmed
+      current status. Month preferred, not required. "Early 2019
+      to about summer 2022" meets the bar. "Three years, ending
+      when my daughter was born" does not — duration without an
+      anchor.
+
+    normalisation: >
+      Convert to MM/YYYY silently and store. Do NOT read the
+      normalised dates back for confirmation — that turns the
+      exchange into form-filling and breaks the register the
+      opening established. If only a year is given, store the
+      year with month null rather than guessing.
+
+    probe_if:
+      - A duration is given with no anchor point ("about four
+        years").
+      - A season or life event is the only marker and cannot be
+        resolved to a year ("just after the pandemic").
+      - Start and end are given but the role changed
+        substantially mid-way, leaving it unclear which period
+        is in scope.
+
+    probe_examples:
+      - "Roughly what year did that start?"
+      - "And what year was that, give or take?"
+      - "Which stretch of that shall we take — the whole thing,
+        or the later part?"
+
+    max_probes: 1
+
+    split_role_rule: >
+      Where a role changed substantially mid-way, the person
+      picks which stretch is in scope. The other is noted for a
+      future session. The tool does NOT attempt to cover both in
+      one card.
+
+    never_probe_for: >
+      Exact months when a year has been offered. The Career Map
+      degrades gracefully with year-only data, and a person
+      pressed for months in the second question learns that this
+      is a form. Never probe gaps, overlaps or short tenure.
+
+  - id: Q3
+    section: frame
+    text: "Which company was that, and what did they actually do?"
+    text_present: "Which company is that, and what do they actually do?"
+    context_dependency: needs_role_named
+    effort_ceiling: low
+
+    objective: >
+      Three outcomes. (1) The company name, recorded as given —
+      it anchors the Role Card headline and lets the person
+      recognise their own map later. (2) The business in the
+      person's own words, richer than a sector label and often
+      revealing how close to or far from the core they sat.
+      (3) An industry classification, derived silently, required
+      later by the "tell me about yourself" artefact.
+
+    wording_note: >
+      "What business were they in?" was considered and rejected.
+      It returns the LABEL (retail, insurance) where the current
+      phrasing returns the BUSINESS ("we sold refurbished
+      laptops to schools"). The label is easier to classify; the
+      description is what makes the card recognisable to the
+      person and reveals their distance from the core. Texture
+      was preferred, since the classifier derives a sector from
+      either.
+
+    industry_handling: >
+      Do NOT ask "which industry was it" — people classify their
+      own employers poorly and the question invites a CV-shaped
+      answer. Derive from the description. Probe only when the
+      description yields nothing. Store the derived value
+      flagged as derived, not stated.
+
+    sufficient_when: >
+      A nameable company (or a clear reason it can't be named)
+      AND enough description to place what the business does.
+
+    probe_if:
+      - No company is named and none was declined.
+      - The name is given with no description, and the business
+        is not self-evident from the name.
+      - The description is too generic to derive an industry
+        ("consulting", "a tech company", "services").
+
+    probe_examples:
+      - "And what was the company called?"
+      - "What did they do, in a sentence?"
+      - "Consulting in what — who were the clients?"
+
+    max_probes: 1
+
+    declined_name_rule: >
+      If the person declines to name the employer, accept
+      immediately and continue with the description alone. Do
+      not ask why. Do NOT offer anonymisation reassurance
+      unprompted — reassurance draws attention to
+      confidentiality at the moment the person has already
+      resolved it for themselves, and tends to make people more
+      guarded rather than less. Record company as withheld.
+
+    never_probe_for: >
+      Company size, revenue, headcount, funding stage or market
+      position. Do not probe for a sector label once one has
+      been derived — asking "so, retail?" makes the
+      classification visible and invites answering in
+      categories.
+
+  - id: Q4
+    section: frame
+    text: "And which function or department were you in?"
+    text_present: "And which function or department are you in?"
+    context_dependency: needs_role_named
+    effort_ceiling: low
+
+    objective: >
+      Place the role inside the organisation on two axes: the
+      FUNCTION (project management, finance, HR, engineering,
+      commercial) and the DIVISION it sat within. Function is
+      primary. For portable functions it is the thread that
+      persists while industry and division change underneath,
+      and the later "tell me about yourself" artefact depends on
+      it to say "the same function across four sectors."
+
+    wording_note: >
+      "Was that in" was revised to "were you in" — it puts the
+      person in the sentence rather than making the role the
+      subject. Small, but across a session these shifts
+      accumulate into whether it feels like a form about a job
+      or a conversation about them.
+
+    sufficient_when: >
+      A function is nameable. A division is welcome but not
+      required. "Finance" alone meets the bar.
+
+    probe_if:
+      - Only a division is given, with no function ("the Nordics
+        business").
+      - The answer is a job family so broad it does not identify
+        a function ("operations", "the business side").
+
+    probe_examples:
+      - "And what was your function within that?"
+      - "Operations covering what — supply chain, service,
+        something else?"
+
+    max_probes: 1
+
+    never_probe_for: >
+      Division size, headcount, reporting lines, org-chart
+      position. Do not ask when the function is self-evident
+      from Q1's title — asking a "Head of Finance" which
+      function they were in signals nobody is listening.
+
+# -------------------------------------------------------------
+# SECTION 2 — ARRIVAL (Q5-Q9)
+# -------------------------------------------------------------
+
+  - id: Q5
+    section: arrival
+    text: "How did you get that role?"
+    context_dependency: needs_role_named
+    effort_ceiling: low
+
+    objective: >
+      The ROUTE into the role, and through it the degree of
+      agency exercised. Active search, referral, headhunter
+      approach, internal move, following someone. Motivation is
+      NOT collected here — Q8 owns it.
+
+      The deeper purpose is longitudinal. Across roles the
+      routes form a pattern: someone consistently sought after,
+      someone who has hunted every time, someone who has never
+      run a real search and only now discovers it. Any can be a
+      strength or a vulnerability; none is judged. A single role
+      cannot show the pattern, so this question's job is to
+      record the route cleanly enough that it becomes visible
+      later.
+
+    wording_note: >
+      Chosen over "how did the role come to you", which
+      presupposes the passive case and forces a person who
+      hunted to correct the frame. "How did you get that role"
+      leans mildly active, but the passive answer remains easy
+      to give ("honestly I didn't — my old boss called me").
+
+    agency_classification:
+      instruction: >
+        Classify the route silently from the answer. Never ask
+        the person to confirm the classification and never name
+        the taxonomy in session.
+      values:
+        - active_search        # applied, hunted, approached them
+        - referral             # a personal contact opened the door
+        - approached           # headhunter or company came to them
+        - followed_a_person    # moved with a former colleague/boss
+        - internal_move        # promotion or transfer within
+        - created_the_role     # proposed or designed it themselves
+        - returned             # went back to a former employer
+        - unclear
+      note: >
+        Labels describe the ROUTE, not the person. "approached"
+        is a fact about how the role arrived; "passive" would be
+        a characterisation of them, and does not belong in a
+        private notebook.
+
+    role_card_treatment: >
+      Surface BOTH. The "Getting the role" line carries the
+      person's own account in their own words, with the route
+      label alongside. E.g. "Referral — an old colleague from
+      Siemens called when the team was being built." The label
+      is the comparable unit for the Career Map; the description
+      is what makes it recognisable to the person.
+
+    sufficient_when: >
+      The route is identifiable well enough to classify, and the
+      person's own account exists in the transcript.
+
+    probe_if:
+      - The answer is procedural rather than a route — the
+        interview process, the rounds, the offer.
+      - The route is genuinely ambiguous between active and
+        passive ("it just happened").
+      - A person is mentioned as the door-opener but their
+        relationship is unstated.
+
+    probe_examples:
+      - "And how did it start — did you go looking, or did it
+        come to you?"
+      - "How did you first hear about it?"
+      - "Who was that — someone you'd worked with?"
+
+    max_probes: 1
+
+    never_probe_for: >
+      Why they wanted it or what they hoped for — Q8 owns that.
+      Never probe the recruitment process: rounds, tests,
+      negotiation, competing offers. That is CV territory.
+
+      Above all, never remark on the route once given. No
+      "sounds like you've always been sought after", no "so you
+      hadn't really searched before." The pattern is for the
+      person to notice later, from their own map. Naming it here
+      would be the tool telling someone who they are on the
+      strength of one data point.
+
+  - id: Q6
+    section: arrival
+    text: "What were you hired to do?"
+    context_dependency: needs_role_named
+    priority_probe: true
+
+    objective: >
+      The PRIMARY TASK of the role in the systems-psychodynamic
+      sense — what the role existed to achieve. Never name the
+      term "primary task" in session.
+
+      Clarity is the load-bearing signal, and it is inferred
+      BEHAVIOURALLY. A well-defined mandate with matching
+      authority is a strong positive condition; a prestigious
+      title with no clear task and no real authority is a
+      structurally difficult role regardless of who holds it.
+      Some people meet that vacuum with high agency and build
+      something; that is the rare case, not the norm.
+
+      The psychodynamic consequence is why this matters: people
+      routinely attribute failure in an undefined role to
+      themselves, when success was never definable in the first
+      place. Capturing the clarity honestly is what makes that
+      reattribution available to the person later.
+
+    design_note: >
+      An earlier draft added "and how clear was that at the
+      time?" It was REMOVED. Asking directly invites a
+      self-assessment; whether a mission and a definition of
+      success appear UNPROMPTED is behavioural evidence of the
+      same thing, and a better instrument. If the answer paints
+      a vivid picture of what had to be accomplished, clarity is
+      established and nothing further is needed.
+
+    two_tier_probe:
+      tier_1:
+        when: >
+          The answer lists duties with no purpose, or is
+          otherwise unclear about what the role was for.
+        text: "And what was the role there to achieve, overall?"
+      tier_2:
+        when: "Clarity still has not arrived after tier 1."
+        text: "Was that laid out for you, or was it more yours
+               to define?"
+        note: >
+          Tier 2 is NOT a failed extraction — it is the finding.
+          If someone cannot articulate what they were hired to
+          achieve after being given room, that is evidence about
+          the ROLE, not about their recall.
+        phrasing_rationale: >
+          Two poles, both respectable, neither loaded. Rejected
+          alternatives: "was it ever actually clear?" (lands as
+          a challenge to their answer); "was it something you
+          worked out as you went?" (conflates an existing
+          mandate nobody explained — an onboarding gap, which is
+          Q9's territory — with a genuine vacuum, which is the
+          structural condition this question wants); "was it a
+          role you had to define yourself?" (leading in the
+          flattering direction — hands the person an
+          agency-shaped frame most will accept rather than say
+          "no, it was just vague and I floundered", so a vacuum
+          gets recorded as self-authorship).
+
+    capture_not_probe:
+      instruction: >
+        Capture in freestyle, do not interrogate. The signals
+        below are recorded WHEN THEY SURFACE SPONTANEOUSLY,
+        never extracted by direct questioning.
+      signals:
+        - task_clarity            # was there a definable objective
+        - authority_match         # did they have the means to do it
+        - success_definition      # was there a definition of success
+        - scope_evolution         # did the mandate change over time
+        - title_task_gap          # impressive title, undefined task
+      note: >
+        People often describe scope evolution unasked — same
+        title for three years, entirely different work and
+        entirely different KPIs by the end. Record it when it
+        appears. Do NOT ask "did the role change over time";
+        that invites narrative construction.
+
+    sufficient_when: >
+      Some account of what the role was for. "Turn the German
+      business around" meets the bar. "Honestly I was never
+      quite sure" meets the bar FULLY — it is the most
+      informative answer this question can produce and needs no
+      follow-up.
+
+    max_probes: 2
+
+    no_interpretation_rule: >
+      The tool must NEVER offer the reattribution reading in
+      session. No "it sounds like the role wasn't set up to
+      succeed", no "that wasn't really on you", no "no wonder it
+      was hard." Even when the answer makes the structural
+      problem obvious — and it often will — the tool records and
+      moves on. This reading is worth a great deal when the
+      person reaches it themselves, ideally seeing it repeat
+      across roles, and very little when handed over by a
+      machine four minutes after meeting them. It is also a
+      clinical judgement the tool is not positioned to make on
+      one account of one role.
+
+    never_probe_for: >
+      KPIs, targets, numbers or formal objectives — the
+      documented version is not what this question is after.
+      Never ask whether they achieved it (Q10 and Q11 own that).
+      Never probe an admission of unclarity for detail; that
+      answer is complete, and pressing it can read as asking
+      them to account for a failure. Never probe authority
+      directly ("did you have the power to do that?") — the
+      question is leading, and where authority was absent the
+      person will usually say so unprompted.
+
+  - id: Q7
+    section: arrival
+    text: "Why do you think they picked you?"
+    context_dependency: "requires Q5 route classification"
+    priority_probe: true
+    retention_note: >
+      RETAINED in v1.1. Previously flagged as the first
+      candidate for removal on timing grounds; that flag is
+      withdrawn. By Q7 the session cannot yet know whether it is
+      running long — the substantial questions all come later —
+      so a cut decision here would be made blind. Keep it, and
+      revisit after pilots show actual session durations.
+
+    objective: >
+      The person's own account of why they were chosen. Two
+      purposes. (1) A reality check: it forces an articulation
+      of the value they carried into the role, which most people
+      have never put into words. (2) Psychodynamic signal — HOW
+      someone answers reveals how they hold their own worth.
+      Deflection ("right place, right time"), attribution to
+      others ("they were desperate"), attribution to credentials
+      ("I had the certification"), or ownership ("I was the only
+      one who'd done it end to end") are four different
+      relationships to one's own value, and the difference
+      matters more than the content of the answer.
+
+      Longitudinally this supplies the "why" behind a
+      sought-after pattern: performance, relationships, a scarce
+      profile, reputation. Without it, "they always came to me"
+      has no substance underneath it.
+
+    wording_variants:
+      instruction: >
+        Select on Q5's route classification. The question must
+        fit the route or it reads as though the tool wasn't
+        listening. NOTE: Q6 sits between Q5 and this question,
+        so the route must be carried forward across one
+        intervening turn.
+      by_route:
+        active_search:     "Why do you think they picked you?"
+        approached:        "Why do you think they came to you?"
+        referral:          "Why do you think they thought of you?"
+        followed_a_person: "Why do you think they wanted you with them?"
+        internal_move:     "Why do you think they gave it to you?"
+        created_the_role:  "Why do you think they went for it?"
+        returned:          "Why do you think they wanted you back?"
+        unclear:           "Why do you think it landed with you?"
+
+    sufficient_when: >
+      Any answer that is genuinely theirs, including a
+      deflection. "No idea, honestly" meets the bar — the
+      inability to answer IS the signal, and pressing it turns a
+      finding into a failure. One reason is enough; a list is
+      not better.
+
+    probe_if:
+      - The answer describes the ROLE's requirements rather than
+        anything about them ("they needed someone senior").
+      - The answer is purely circumstantial AND the person seems
+        willing to go further.
+
+    probe_examples:
+      - "And why you, out of the people who could have done it?"
+      - "What did you have that made it you?"
+
+    max_probes: 1
+
+    deflection_rule: >
+      A flat deflection — "luck", "no idea", "they were
+      desperate", a laugh and a shrug — is ACCEPTED after at
+      most one gentle probe, and never challenged. Do not
+      counter-argue, do not supply reasons on their behalf, do
+      not reassure ("I'm sure it was more than that"). Record
+      the deflection as given. Someone who cannot name their own
+      value has told the session something true, and the tool's
+      job is to hear it, not fix it.
+
+    discomfort_note: >
+      The first question in the set that can be excruciating to
+      answer. Ask it lightly and leave room. If the person
+      visibly struggles, one probe maximum, then move on warmly.
+
+    never_probe_for: >
+      Evidence, proof or examples supporting their claim.
+      "Because I was good at it" is a complete answer here;
+      asking them to substantiate it turns a reflective question
+      into an interview. Never compare them to other candidates.
+      Never probe a modest answer harder than a confident one —
+      that quietly teaches them the tool prefers confidence.
+
+  - id: Q8
+    section: arrival
+    text: "What made you say yes?"
+    context_dependency: needs_role_named
+
+    objective: >
+      Why they moved — and, through that, what they were
+      optimising for. Money, escape, title, a person, learning,
+      geography, someone else's wish, or simply that it was
+      there.
+
+      Across roles these form a motivational pattern, which is
+      where the value sits: someone who has moved AWAY from
+      things every time versus TOWARD them; someone who has
+      never once moved for the work itself; someone whose
+      reasons have shifted as life stages changed. A single
+      answer is a data point, not a finding.
+
+    five_dimensions:
+      source: >
+        Reverse-engineered from the A Method's five dimensions
+        by which a hiring company sells a role to a candidate.
+        Inverted here for self-discovery: the same five
+        dimensions reveal what mattered to the PERSON in taking
+        each role.
+      instruction: >
+        Record which dimensions appear SPONTANEOUSLY. This is a
+        capture frame, not a checklist. Never name the framework
+        in session, never work through it, never ask about a
+        dimension that did not arise — with the single exception
+        below. What the person reaches for unprompted IS the
+        signal; a role where only fortune appears is a finding,
+        and prompting the other four would erase it.
+      dimensions:
+        fit:      "goals, strengths and values matching the
+                   mission and the role — the fit that leads to
+                   impact"
+        family:   "partner, children, location, care, household —
+                   the broader trauma of change; a role move is
+                   never only about the person"
+        freedom:  "autonomy over their own decisions, absence of
+                   micromanagement"
+        fortune:  "stability or growth of company, department and
+                   role, and the financial upside attached"
+        fun:      "the work environment, the people, the culture,
+                   the relationships they would be making"
+      values_note: >
+        VALUES ARE DERIVED, NEVER ASKED. Direct value questions
+        ("what are your core values?") produce rehearsed
+        abstractions. What someone actually moved toward,
+        repeatedly, is far better evidence. Read fit from the
+        substance of the answer, never from self-description.
+      session_level_note: >
+        See cross_section_capture — these dimensions also
+        surface in Macro, Role System, Micro and Exit answers,
+        and are recorded wherever they appear.
+
+    family_exception:
+      probe_when: >
+        No family or personal-life consideration appears AND the
+        person has not signalled that the topic is unwelcome.
+      text: "And was there anything going on outside work that
+             fed into it?"
+      rationale: >
+        The ONLY dimension worth one prompt. People
+        systematically under-report it in a work-framed
+        conversation — they had the consideration and assume it
+        doesn't belong in an answer about a job. That is a
+        reporting artefact, not a true absence. The other four
+        do not need prompting: someone who cared about autonomy
+        says so.
+      wording_rationale: >
+        Deliberately says "outside work", never "family". This
+        lets someone answer about a partner, a parent, a
+        mortgage, a visa or their own health without the tool
+        presuming a household shape.
+      limits: >
+        One attempt. "Not really" is accepted immediately and
+        never revisited. Never ask about relationship status,
+        children, or household composition directly.
+
+    sufficient_when: >
+      At least one reason that is actually theirs. "The money"
+      meets the bar. "I was desperate to get out of where I was"
+      meets it. "It was the obvious next step" does NOT — that
+      describes the move's logic with no person in it.
+
+    probe_if:
+      - The answer describes the move's logic rather than any
+        pull or push ("it was the natural progression").
+      - The answer is purely about the previous role being bad,
+        with nothing about this one.
+      - A person is named as the reason without saying what
+        about them mattered.
+
+    probe_examples:
+      - "And what appealed to you about it?"
+      - "Was there anything about this one that drew you, or was
+        it mostly about leaving?"
+      - "What was it about working with them?"
+
+    max_probes: 1   # excludes the family_exception turn
+
+    away_from_rule: >
+      "Mostly to get out of where I was" is a COMPLETE answer,
+      not a deficient one. Probe once for any pull toward the
+      new role, then accept. Never treat an away-from motive as
+      something to be corrected into a toward-motive — that
+      pattern is precisely what the longitudinal layer watches
+      for, and it only shows up if recorded honestly.
+
+    never_probe_for: >
+      Whether the reason was good, wise or sufficient. Never
+      probe the amount once money is mentioned — the figure is
+      irrelevant and asking makes the session feel like it is
+      pricing them. Never probe an other-directed motive ("my
+      partner wanted to move back") for whether they resented it
+      — asking invites a grievance not offered.
+
+  - id: Q9
+    section: arrival
+    text: "How long did it take you to feel confident in the role,
+           and what helped you get that confidence?"
+    text_present: "How long did it take you to feel confident in the
+                   role — or are you still getting there? And what
+                   has helped?"
+    context_dependency: needs_role_named
+    priority_probe: true
+
+    objective: >
+      The ramp into the role, and — the real target — HOW the
+      person got themselves up it. The second clause matters
+      more than the first.
+
+      What is captured is how this person takes up a role: how
+      much they rely on themselves, how readily they ask for
+      help, whether they build networks deliberately or wait to
+      be included, whether anyone was assigned to them or they
+      found their own way. Across roles this becomes one of the
+      more consequential patterns in the whole map. Someone who
+      has never asked for help in five roles has a working
+      method that has held so far — and a real vulnerability if
+      the next role, or the transition itself, demands support
+      they have no practice requesting.
+
+    wording_note: >
+      "Confident" was chosen over "autonomous" (clinical, and
+      jargon in some organisations) and over "knew what you were
+      doing" (too vague). Confidence is an emotional
+      self-assessment, and that is accepted deliberately: what
+      the session wants is how the person EXPERIENCED the ramp,
+      not an objective measure of it. Someone who never felt
+      confident anywhere is telling the session something real.
+
+    complexity_confound: >
+      Ramp LENGTH is not a measure of the person. A role that
+      felt fine on day one may simply be a simple role; a
+      nine-month ramp may reflect genuine technical depth, a
+      complex organisation, or a network that had to be built
+      from nothing. Duration is only interpretable alongside
+      what the role demanded. Record both; never read the number
+      alone.
+
+    capture:
+      instruction: >
+        Record how confidence was built, from whatever the
+        answer offers. Do not ask about these directly.
+      signals:
+        - self_reliance        # figured it out alone, heads down
+        - help_seeking         # asked, and of whom
+        - formal_support       # onboarding, training, assigned buddy
+        - network_building     # deliberately built relationships
+        - learning_by_doing    # thrown in, learned on the job
+        - never_arrived        # confidence never really came
+      note: >
+        "never_arrived" is a significant capture and must not be
+        treated as a non-answer. Material for Q11, Q19 and the
+        pattern layer.
+
+    sufficient_when: >
+      Some sense of the ramp AND at least one thing that helped.
+      "Six months, mostly by shadowing the guy who'd done it
+      before" meets the bar fully. A duration with nothing about
+      HOW is INCOMPLETE — the second clause is the point.
+
+    probe_if:
+      - Only a duration is given, with nothing about what helped.
+      - The answer is entirely about the role's difficulty with
+        nothing about what the person did.
+      - Help is mentioned in the passive with no source ("I got
+        up to speed eventually").
+
+    probe_examples:
+      - "And what helped — was there anyone, or anything in
+        particular?"
+      - "How did you get there in the end?"
+      - "Who did you lean on, if anyone?"
+
+    max_probes: 2
+
+    no_help_rule: >
+      "Nobody, I just worked it out" is a COMPLETE and important
+      answer. Accept it without probing further and without any
+      implication that help should have been sought or was
+      available. Never suggest they could have asked, never ask
+      why they didn't, never remark that it sounds hard or
+      lonely. Self-reliance is being recorded, not assessed —
+      and it may well have been the correct response to that
+      organisation.
+
+    never_probe_for: >
+      Whether they were well onboarded, whether the support was
+      adequate, or whether the organisation failed them. All
+      invite grievance the person has not offered. Never
+      benchmark the ramp ("that's quite fast" / "that sounds
+      long"). Never probe a "never_arrived" answer for detail.
+
+# -------------------------------------------------------------
+# SECTION 3 — MACRO (Q10-Q11)
+# Deliberately two questions for the first iteration.
+# -------------------------------------------------------------
+
+  - id: Q10
+    section: macro
+    text: "What accomplishment in this role are you most proud of?"
+    text_present: "What accomplishment in this role are you most
+                   proud of so far?"
+    priority_probe: true
+
+    objective: >
+      The PEAK of the role, as the person currently understands
+      it — what mattered, and what meaning they have made of it.
+      This is present-day meaning, not historical fact; it may
+      well have been different five years ago and different
+      again in five more. Record it as the reading they hold
+      now.
+
+      Where no peak emerges, that absence is itself a data point
+      for the pattern layer — not a failed question.
+
+    scar_capture:
+      instruction: >
+        Record which elements appear SPONTANEOUSLY. Never name
+        the framework in session and never walk the person
+        through it.
+      elements:
+        situation:  "the context — what was going on"
+        challenge:  "what was at stake, for the company AND for
+                     them"
+        action:     "what THEY specifically did"
+        result:     "what changed — the outcome"
+      no_interpretation: >
+        A missing element is recorded and NOT interpreted. SCAR
+        completeness is a STORYTELLING SKILL, not a property of
+        the achievement, and it is exactly the skill coaching
+        exists to teach. A missing RESULT is confounded at least
+        four ways: functions where success is invisible by
+        nature (support, compliance, care, risk — where the
+        outcome is that nothing happened); people trained out of
+        claiming credit, unevenly distributed by culture and
+        gender; roles with genuinely no measurable outcome; and
+        a modest register that says "it went fine." Take the
+        answer as it comes.
+
+    anchor_on_one: >
+      Phrased singular. If several accomplishments arrive
+      anyway, pick the one they showed most energy for and probe
+      into that. One story told fully is worth more than three
+      named. Do not work through the list.
+
+    sufficient_when: >
+      One accomplishment identified with at least the person's
+      own ACTION in it — what they did, not only what happened.
+      "It was a great couple of years" does not meet the bar.
+
+    probe_if:
+      - Credit is entirely diffuse — "we", "the team", "it
+        happened" — with no self in it.
+      - An accomplishment is named with no context at all.
+      - The person lists several and settles on none.
+
+    probe_examples:
+      - "And what was your part in that?"
+      - "What was going on that made it hard?"
+      - "How did it end up?"
+
+    probe_priority: >
+      If only one probe is available, spend it on ACTION. The
+      person's own part is what the Role Card cannot reconstruct
+      and what the pattern layer most needs. Situation and
+      result can be inferred or left thin.
+
+    max_probes: 2
+
+    nothing_proud_of_rule: >
+      "Honestly, nothing" or a long silence is a SIGNIFICANT
+      capture, not a non-answer. Accept it plainly, do not
+      counter-offer ("but you mentioned earlier..."), do not
+      reassure, do not press.
+
+    never_probe_for: >
+      Numbers, metrics or quantification of the result. Asking
+      "by how much?" turns a reflective question into CV
+      preparation, and the SCAR training belongs to a separate
+      coaching activity, not to this session. Never suggest an
+      accomplishment they haven't named. Never evaluate the
+      scale — no "that's impressive", which both flatters and
+      sets a bar for whatever comes next.
+
+  - id: Q11
+    section: macro
+    text: "And what were some of the low points?"
+    priority_probe: true
+
+    objective: >
+      The counterweight to Q10. Everyone has low points in a
+      role; the question is what they were and how the person
+      holds them now. Several is fine — unlike Q10 there is no
+      need to anchor on one, since the range itself is
+      informative.
+
+      Low points take several distinct shapes and any of them is
+      a complete answer: something that went badly wrong; a
+      mistake they made; a part of the role they simply
+      disliked; a period of feeling professionally inadequate
+      beside their peers; something done to them.
+
+    distress_stance: >
+      A low point is NOT automatically distress. Most are daily
+      frustrations, irritations, a project that went sideways, a
+      part of the job that was simply tedious. Asking the
+      question directly is fine and the normal probing rules
+      apply.
+
+      GATE ON THE FIRST ANSWER. If the person's first,
+      spontaneous answer clearly signals distress associated
+      with the low point — grief, humiliation, anger, shame —
+      then never_probe_into_distress kicks in from that point
+      and governs the rest of the question. Acknowledge and
+      continue; do not ask for more, however incomplete the
+      picture.
+
+      This is a deliberate first-iteration setting, to be
+      reviewed against what pilots actually produce rather than
+      adjusted in advance.
+
+    denial_probe:
+      when: >
+        The person denies having had ANY low points, in a
+        neutral or breezy register. NOT when the denial is
+        guarded or clipped — that is a refusal, and doctrine
+        accepts refusals without probing.
+      rationale: >
+        Universal absence of low points is rare enough to be
+        worth one gentle opening. The likelier explanations are
+        that the person is reading "low point" as something
+        dramatic, or that the register still feels too formal to
+        say something unflattering.
+      probe_examples:
+        - "Was there anything that went wrong, even in a small
+          way?"
+        - "Any part of it you just didn't enjoy?"
+        - "Anything you'd do differently, looking back?"
+      limits: >
+        ONE attempt, then accept fully and move on. Never
+        suggest there must have been something. Never return to
+        it later in the session.
+
+    sufficient_when: >
+      At least one low point the listener can SEE — a situation,
+      not a category. "It was stressful" does not meet the bar.
+      "We lost the biggest client three months after I took over
+      the account" does.
+
+    probe_if:
+      - A category rather than a situation ("politics", "the
+        culture", "stress", "management").
+      - Something named but not placed.
+      - Alluded to and moved past quickly WITHOUT signs of
+        distress.
+
+    probe_examples:
+      - "What do you mean by that?"
+      - "What happened?"
+      - "How did you deal with that?"
+      - "Tell me more about that one."
+
+    max_probes: 2
+
+    never_probe_for: >
+      Blame — never ask whose fault it was, and never offer a
+      culprit. Never ask what they learned from it; that is
+      Q20's territory and asking here forces a silver lining
+      onto something the person may not have resolved. Never ask
+      how it was resolved if they haven't said — plenty of low
+      points simply weren't. Never reassure ("that sounds like
+      it wasn't your fault", "that happens to everyone"), which
+      closes the topic while appearing to open it.
+
+# -------------------------------------------------------------
+# SECTION 4 — ROLE SYSTEM (Q12-Q17)
+# The people. Heaviest psychodynamic weight in the bank.
+# Three groups: bosses, team (conditional), significant others.
+# -------------------------------------------------------------
+
+  - id: role_system_intro
+    section: role_system
+    type: section_intro
+    text: "Now I'd like to talk about the people you worked with in
+           that role."
+    purpose: >
+      A single spoken opening for the whole section rather than
+      three cold starts. It also does quiet detection work:
+      asked openly, most people volunteer their reporting line
+      and their team unprompted, which resolves both running
+      flags below without a dedicated question.
+
+    running_flags:
+      is_managerial:
+        values: [true, false, unset]
+        set_from: >
+          Any answer in Q1-Q11 revealing that the person led
+          people — title, mandate, function, or a passing
+          mention of "my team". Carried forward silently.
+        resolution: >
+          If still unset when the boss block closes, ask
+          plainly: "And were you managing a team yourself?"
+          Cheap and unembarrassing. Better than mis-asking Q15.
+      boss_configuration:
+        values: [single, sequential, dual_reporting, none, unset]
+        detection_note: >
+          DUAL REPORTING must be distinguished carefully. People
+          describe it loosely ("I sort of reported to both"). A
+          dotted line to a functional head is NOT dual
+          reporting. The condition that carries the material is
+          two people who each behaved as though they owned the
+          person's time and priorities. Where genuinely
+          ambiguous, treat as single and let the texture emerge.
+
+  - id: Q12
+    section: role_system
+    text: "What was it like working with them?"
+    condition: "boss_configuration in [single, sequential]"
+    priority_probe: true
+
+    sequential_rule: >
+      Where there were several bosses in sequence, ask about the
+      one who mattered most — "Was there one who mattered most?"
+      — then a LIGHT pass on the others ("And the others?").
+      Repeating the full block for each is expensive and
+      low-yield; one usually dominates the person's account
+      anyway.
+
+    objective: >
+      The texture of the primary working relationship in the
+      role. Deliberately wide open — what the person reaches for
+      first, and what they leave out, is the signal.
+
+    stance: >
+      The picture must not be allowed to stay glossy or
+      self-serving, but this is achieved by probing for
+      CONCRETENESS, never by challenging the account. The tool
+      does not test the story; it asks what happened.
+
+    sufficient_when: >
+      The listener can picture the relationship — a way of
+      working, an example, something that actually occurred.
+      "Great, we got on well" does not meet the bar. "He left me
+      alone for months and then wanted everything in a day"
+      does.
+
+    probe_if:
+      - The answer is short or generic and paints no picture.
+      - Only a character assessment is given, with no working
+        relationship in it ("he was a good guy").
+
+    probe_examples:
+      - "Tell me more."
+      - "What was that like day to day?"
+      - "What's an example of that?"
+
+    max_probes: 2
+
+    never_probe_for: >
+      Whether the boss was good at their job. Never invite a
+      verdict, never agree with a criticism, never defend them.
+
+  - id: Q13
+    section: role_system
+    text: "What was it like having two?"
+    condition: "boss_configuration == dual_reporting"
+    priority_probe: true
+
+    followup:
+      text: "And when they wanted different things, how did that
+             play out?"
+      note: >
+        Asked as a follow-up turn, not a probe. This is where
+        the material actually is.
+
+    objective: >
+      Dual reporting is difficult not because there are two
+      relationships but because THE SPLIT GETS LOCATED IN THE
+      PERSON. Two managers with conflicting priorities rarely
+      resolve the conflict between themselves; each pursues
+      their own, and the person underneath becomes the place
+      where the contradiction has to be held. That is why it
+      exhausts people out of proportion to the workload, and why
+      it is among the hardest situations in organisational life.
+
+      What is captured: where authority actually sat, whether
+      one dominated, whether the conflict was open or hidden,
+      and what the person had to do to hold it.
+
+    design_note: >
+      Do NOT ask the person to characterise each boss
+      separately. That reproduces Q12 twice and misses the
+      split, which is the whole point.
+
+    sufficient_when: >
+      Some account of how the two-headed structure worked in
+      practice — not two character sketches.
+
+    probe_if:
+      - The answer stays abstract or diplomatic ("they were both
+        fine, it worked out").
+      - Conflict is alluded to but not described.
+
+    probe_examples:
+      - "How did that work in practice — who actually decided?"
+      - "What happened when they disagreed?"
+      - "What did you do?"
+
+    max_probes: 2
+
+    never_probe_for: >
+      Which one they preferred, or whose side they were on. Both
+      invite disloyalty and neither is the material.
+
+  - id: Q14
+    section: role_system
+    text: "What would they say were your biggest strengths, and your
+           areas for improvement?"
+    context_dependency: "requires the boss named in Q12 or Q13"
+    priority_probe: true
+
+    objective: >
+      Strengths and development areas, routed through the boss's
+      imagined view. This phrasing solves a real problem: asked
+      directly, "what are your strengths" produces either a
+      rehearsed answer or an embarrassed one. Routed through
+      another person the reply is REPORTING rather than
+      CLAIMING, which most people find far easier — and it
+      carries the areas-for-improvement half without it feeling
+      like a confession.
+
+      It is also the more accurate frame. Strengths exist in
+      relation to what a role and its holder needed, and the
+      boss is the person who hired them to perform in that
+      specific role.
+
+    dont_know_probe:
+      text: "What's your best guess?"
+      rationale: >
+        The ONE place in the bank where a non-answer is pushed
+        past. Justified because the person does know — they have
+        simply never formulated it. There is always a better
+        answer available than "I don't know", and it usually
+        arrives immediately.
+      limits: "One attempt. A second refusal is accepted."
+
+    sufficient_when: >
+      At least one strength AND one area for improvement, in
+      terms specific enough to picture. "Reliable" is thin;
+      "he'd say I never dropped anything, and that I took too
+      long to escalate" is not.
+
+    probe_if:
+      - Only strengths are given, with the second half skipped.
+      - The answer is a generic trait list with nothing
+        role-specific in it.
+
+    probe_examples:
+      - "And what would they have said you needed to work on?"
+      - "What's your best guess?"
+
+    max_probes: 2
+
+    never_probe_for: >
+      Whether they agreed with the assessment. That converts a
+      reporting question back into a claiming one, which is
+      precisely what the phrasing was designed to avoid.
+
+  - id: Q15
+    section: role_system
+    text: "How would you rate the team you inherited?"
+    condition: "is_managerial == true"
+    priority_probe: true
+
+    built_from_scratch_note: >
+      The phrasing presupposes an existing team. Where the
+      person had to BUILD one from scratch, this surfaces
+      immediately in the answer — most people correct the
+      premise in their first sentence. Flag and record it as
+      building rather than inheriting (and, where relevant,
+      rebuilding), and carry on. No separate variant is needed;
+      the correction itself is informative.
+
+    objective: >
+      Agency in building a team. Whatever the rating, what
+      FOLLOWS reveals whether the person accepted the hand they
+      were dealt or made changes — and if they made changes,
+      what, and how fast. That is the real target: the rating is
+      only the door into it.
+
+    sufficient_when: >
+      Some assessment of the team AND some sense of what the
+      person did in response. An assessment alone is incomplete.
+
+    probe_if:
+      - A rating is given with nothing about what they did.
+      - Changes are mentioned generically ("I made some
+        changes").
+
+    probe_examples:
+      - "And what did you do about that?"
+      - "What changes did you make?"
+      - "How long did that take?"
+
+    max_probes: 2
+
+    never_probe_for: >
+      Names or details of anyone removed, managed out or
+      dismissed. Never ask how difficult it was to let someone
+      go. That is a live wound for many managers and the session
+      has no use for it.
+
+  - id: Q16
+    section: role_system
+    text: "And what would your team have said were your strengths,
+           and the things you could have done better?"
+    condition: "is_managerial == true"
+    priority_probe: true
+
+    objective: >
+      The second viewpoint of the virtual 360. The ASYMMETRY
+      against Q14 is the finding: bosses value delivery,
+      judgement and predictability; teams value protection,
+      clarity, fairness and whether you shielded them. The two
+      answers should differ, and a person whose answers are
+      identical may have a coherent style — or may be answering
+      from a single self-image rather than genuinely imagining
+      two viewpoints.
+
+    inconsistency_handling:
+      capture: >
+        Record any contradiction between Q14 and Q16 — most
+        sharply where the same quality is a strength in one and
+        a weakness in the other.
+      in_session: >
+        DO NOT NAME IT LIVE in this iteration. Difference
+        between the two answers is expected and remarking on it
+        would be noise. A genuine contradiction is more
+        interesting, but naming it is the tool telling the
+        person something about themselves mid-session, and it
+        lands immediately after two questions where they have
+        just been unusually candid. Capture only.
+      deferred_to: >
+        The pattern-building layer. Revisit when that work
+        begins — not the doctrine.
+
+    dont_know_probe:
+      text: "What's your best guess?"
+      limits: "One attempt, as Q14."
+
+    sufficient_when: >
+      At least one strength AND one shortfall, specific enough
+      to picture.
+
+    probe_if:
+      - Only strengths are given.
+      - The answer merely repeats Q14 verbatim with no
+        adjustment for the different viewpoint.
+
+    probe_examples:
+      - "And what would they have wanted more of from you?"
+      - "What's your best guess?"
+
+    max_probes: 2
+
+    never_probe_for: >
+      Whether they were a good manager. Never evaluate the
+      answer, and never reassure a self-critical one — a manager
+      naming their own shortfall has done something difficult
+      and does not need it softened.
+
+  - id: Q17
+    section: role_system
+    text: "Who else really mattered in that role?"
+
+    objective: >
+      The significant others — the people without whom the role
+      would have been a different experience. Not a roster of
+      colleagues: the question is deliberately narrow, and an
+      empty answer is a legitimate one.
+
+      What qualifies: a mentor, a sponsor, an internal client, a
+      peer who changed how the person worked, someone whose
+      influence still surfaces when they think about that role.
+      The test is IMPACT and PERSISTENCE — someone who keeps
+      coming back to mind, years later.
+
+    design_note: >
+      Phrased to resist list-building. "Who did you work with"
+      would produce an org chart; "who really mattered" produces
+      two or three people at most, which is the right yield.
+      Never prompt with categories ("any mentors? any key
+      stakeholders?") — the categories would populate themselves
+      and the signal would vanish.
+
+    weak_ties_note: >
+      SECOND PURPOSE, not to be pursued in session. These names
+      are weak ties, and weak ties are where most career change
+      and job opportunity actually originates. The Role Card can
+      hold them as such. But the question must NOT be bent
+      toward contact capture — asking where someone is now, or
+      whether they are still in touch, converts a reflective
+      question into networking admin and would cost more than
+      the data is worth. Capture what emerges naturally;
+      everything else is the card's job or a later feature.
+
+    sufficient_when: >
+      Either at least one person with some sense of WHY they
+      mattered, or a clear indication that nobody stands out. A
+      name alone is incomplete — the impact is the point.
+
+    probe_if:
+      - A name is given with no account of the impact.
+      - Several names arrive as a list with no differentiation.
+
+    probe_examples:
+      - "What did they do for you?"
+      - "What difference did they make?"
+      - "Which of them mattered most?"
+
+    max_probes: 1
+
+    nobody_rule: >
+      "Nobody really" is a complete and legitimate answer.
+      Accept it without probing and without any implication that
+      there should have been someone. Some roles are genuinely
+      solitary. Record it; across roles it may become
+      meaningful, and it is not the tool's business here.
+
+    never_probe_for: >
+      Where the person is now, whether they are still in touch,
+      or contact details. Never ask about people who mattered
+      NEGATIVELY unless the person raises them — "who made it
+      harder" is a different question with a different risk
+      profile and is deliberately not asked in this iteration.
+
+# -------------------------------------------------------------
+# SECTION 5 — MICRO (Q18)
+# One question. A recall invitation, not an elicitation.
+# -------------------------------------------------------------
+
+  - id: Q18
+    section: micro
+    text: "Thinking back to the day to day — what stood out? What
+           gave you energy, and what drained you?"
+
+    framing_note: >
+      Delivered with a brief bridge acknowledging the shift:
+      something like "We've covered the big picture and the
+      people — now the ordinary days." Keep the spoken question
+      SHORT. Everything in the capture list below is recorded IF
+      IT ARRIVES; none of it is said aloud. A long preamble in
+      voice means people answer only the last thing they heard.
+
+    objective: >
+      A RECALL INVITATION, not an elicitation. This is the one
+      question in the bank whose value depends on its position:
+      after twenty minutes of talking, small concrete details
+      surface that no direct question at minute five could
+      reach. The person is being given room to remember, not
+      asked to report.
+
+      What is being excavated is what actually MATTERED at the
+      level of lived experience — which is often where the
+      significant texture for cross-role patterns lives. Someone
+      who names the same kind of task as draining in four
+      different roles has said something no macro question would
+      have produced.
+
+    replaces: >
+      The original micro block of six questions — typical day,
+      tools and contacts, energising parts, draining parts,
+      hours and flexibility, physical environment. Collapsed to
+      one open invitation. The tools question in particular was
+      dropped: tooling dates fast and rarely carries meaning.
+      May be restored for completeness in a later version.
+
+    capture:
+      instruction: >
+        Record whatever arrives, from any angle. NEVER work
+        through this as a checklist and never ask whether a
+        given item mattered — asking would populate the
+        categories and destroy the signal that comes from what
+        the person reaches for unprompted.
+      elements:
+        - energising_tasks
+        - draining_tasks
+        - rhythm            # hours, flexibility, pace, travel
+        - physical_space    # office, desk, commute, home, site
+        - people_texture    # daily contact not already captured
+        - artefacts         # objects, rituals, small specifics
+        - anything_else     # material that fits no category
+
+    sufficient_when: >
+      Anything at all, including nothing. There is no bar. A
+      single detail meets it; so does "honestly, nothing comes
+      to mind."
+
+    silence_handling: >
+      A pause here is PRODUCTIVE and must be allowed to run. Do
+      not fill it. This question works by letting material
+      surface, and the surfacing takes a few seconds of genuine
+      quiet.
+
+      Hold the exit in reserve. "If nothing comes to mind,
+      that's completely fine" is offered ONLY once a long pause
+      has passed — never up front. Said up front, a fair number
+      of people will take the exit rather than sit in the
+      silence where the material actually is.
+
+    nothing_comes_rule: >
+      If nothing arrives, accept it warmly and move on. Do NOT
+      probe, do not prompt with categories, do not suggest what
+      others typically mention. Close with a brief empathic
+      reflection of what has already been heard, then continue
+      to the Exit section.
+
+    probe_if:
+      - Something IS named but stays a category — "the commute",
+        "the open plan", "the meetings" — with no picture
+        attached.
+
+    probe_examples:
+      - "What was that like?"
+      - "Tell me more about that."
+
+    max_probes: 1
+
+    probe_note: >
+      The single exception to the no-probing stance here, and a
+      narrow one. It applies ONLY to something the person
+      volunteered, and only to make it visible. Never probe for
+      an element that did not arrive.
+
+    never_probe_for: >
+      Tools, software, systems. Anything from the capture list
+      that did not surface on its own. Never ask "did the office
+      matter?" or "what about your hours?" — the question's
+      entire value is in what comes unprompted.
+
+# -------------------------------------------------------------
+# SECTION 6 — EXIT (Q19-Q21)
+# Story, then meaning, then the catch-all.
+# -------------------------------------------------------------
+
+  - id: Q19
+    section: exit
+    text: "What's the story behind leaving this role?"
+    condition: "role is not current"
+    priority_probe: true
+
+    wording_note: >
+      Deliberately NOT "why did you leave". "Why" asks for
+      justification and puts people on the defensive about a
+      decision they may already regret (see doctrine:
+      probing_stance). "What's the story behind" invites
+      narrative and texture, and lets the reason arrive inside
+      the account rather than as a defended position.
+
+    objective: >
+      Two distinct things, and both are wanted.
+
+      (1) THE FACTUAL ROUTE OUT. Promoted, recruited away, left
+      without a next step, made redundant, dismissed, contract
+      ended, health, family, relocation. Whether the move was
+      toward something or away from something — and if both,
+      which was stronger, the push or the pull.
+
+      (2) THE EXPERIENCE OF LEAVING, which is a different object
+      entirely. A person can leave for excellent reasons and
+      still have been marked by how it happened. Someone can be
+      promoted and feel pushed out; someone can be made
+      redundant and feel released. The factual route does not
+      predict the felt experience, and the felt experience is
+      what the person carries forward into the next role — and
+      often into how they approach the search that follows.
+
+    probe_for_experience: >
+      If the answer gives only the factual route, probe ONCE for
+      the experience — subject always to the distress rule
+      below. "How did that feel at the time?" or "What was that
+      like for you?"
+
+    conditional_followup:
+      when: "The person chose to leave, for an external move."
+      text: "And how did your boss react to the news?"
+      note: >
+        Revealing about the relationship and about how the
+        person was held in the organisation. Asked ONLY where
+        the departure was voluntary — it presupposes a choice,
+        and asking it of someone who was dismissed or made
+        redundant would be cruel.
+
+    curiosity_about_the_story: >
+      Be curious about learning more of the story. The stance is
+      genuine interest, not insistence — use the standard forms
+      (what, how, tell me more) to fill in a picture that is too
+      thin to see. A leaving story told in abstractions ("it
+      just felt like time", "things had run their course") is
+      the most common form of incompleteness here and is worth
+      following up.
+
+      GATE ON THE FIRST ANSWER. If the person's first,
+      spontaneous answer clearly signals distress, the curiosity
+      stance does not apply at all and never_probe_into_distress
+      governs from that point. The first answer is the decision
+      point: read it before deciding whether to follow up at
+      all, rather than probing first and retreating afterwards.
+
+    distress_precedence: >
+      CRITICAL AND OVERRIDING. The curiosity stance above is
+      SUBORDINATE to never_probe_into_distress. This is the
+      single most likely place in the bank for the two to
+      collide, and the resolution is not negotiable: where
+      vagueness carries distress, STOP IMMEDIATELY.
+
+      Dismissal, redundancy, a health crisis, a breakdown, an
+      exit under a settlement, a bereavement, a discrimination
+      or harassment case — these are common ways for roles to
+      end, and vagueness about them is frequently PROTECTIVE
+      rather than lazy. The tool cannot reliably tell protective
+      vagueness from casual vagueness from the outside.
+      Therefore: where there is any doubt, treat it as
+      protective and stop. A thin ending in the Role Card costs
+      far less than pushing someone into an account they did not
+      choose to give.
+
+      Signals to stop: flattened affect, a marked change in
+      pace, a short clipped answer after a discursive session, a
+      legal or settlement reference, an explicit "I'd rather not
+      go into it."
+
+    sufficient_when: >
+      The listener can see how the role ended — the route out,
+      and some sense of how it landed for the person. A clear
+      factual route with a refused or halted experience half is
+      COMPLETE, and must be recorded as complete, not as a gap.
+
+    probe_if:
+      - The account is entirely abstract ("it was just time").
+      - Only the factual route is given, with no experience —
+        and no distress signals are present.
+      - The reason given is external and unelaborated ("the
+        company restructured") with nothing about the person's
+        own position in it.
+
+    probe_examples:
+      - "What happened?"
+      - "Tell me more."
+      - "How did that come about?"
+      - "What was that like for you?"
+
+    max_probes: 2
+
+    never_probe_for: >
+      Financial terms, settlement details, notice periods, or
+      anything with a legal shape. Never ask whether they
+      regret it. Never ask whether they would go back. Never
+      offer a verdict on the organisation's conduct, however
+      clearly it behaved badly — that is a judgement the tool is
+      not positioned to make, and taking a side closes the topic
+      while appearing to open it.
+
+  - id: Q20
+    section: exit
+    text: "If there's one thing this role taught you, what is it?"
+    priority_probe: true
+
+    position_rationale: >
+      Placed AFTER the leaving story, deliberately. This is
+      retrospective synthesis, and asking for synthesis before
+      the narrative is complete means the person synthesises
+      from partial material. The ending is often where the
+      meaning of a whole role gets settled, and the lesson
+      frequently arrives out of the leaving account itself.
+
+    objective: >
+      The person's own summary of the role — the single thing
+      they carry from it. This is the closest the session comes
+      to asking directly for meaning, and it works only because
+      everything else has been said first.
+
+      Note what it captures beyond the content: whether the
+      lesson is about the WORK (a skill, a domain, a craft),
+      about ORGANISATIONS (how they behave, what they do to
+      people), or about THEMSELVES (what they need, what they
+      cannot tolerate, what they are for). Across roles this
+      distribution is revealing — someone whose every lesson is
+      about organisations has a different relationship to work
+      than someone whose every lesson is about themselves.
+
+    capture:
+      instruction: "Classify silently. Never name the categories."
+      lesson_type:
+        - about_the_work
+        - about_organisations
+        - about_themselves
+        - about_other_people
+        - unclear
+
+    sufficient_when: >
+      One thing, in their own words, specific enough to mean
+      something. "I learned a lot" does not meet the bar.
+      "That I need to know what good looks like before I take a
+      job" does.
+
+    probe_if:
+      - The answer is a platitude with no content ("always keep
+        learning", "people are everything").
+      - Several lessons are listed with none settled on.
+
+    probe_examples:
+      - "What do you mean by that?"
+      - "Which of those has stayed with you most?"
+      - "How did you come to that?"
+
+    max_probes: 1
+
+    nothing_learned_rule: >
+      "Nothing, really" is accepted without challenge and
+      recorded as given. Do not supply a lesson on their behalf,
+      do not suggest one from earlier in the session, do not
+      imply that every role must have taught something. Some
+      roles genuinely do not, and the person saying so plainly
+      is being honest rather than unreflective.
+
+    never_probe_for: >
+      Whether they have applied it since. Never evaluate the
+      lesson, and never affirm it as wisdom ("that's a really
+      valuable insight") — the affirmation makes the session an
+      audience, and the person will start performing for it.
+
+  - id: Q21
+    section: exit
+    text: "What else about this role matters that we haven't touched?"
+
+    objective: >
+      The catch-all, and a genuine one. Twenty questions cannot
+      anticipate what mattered in a particular life, and the
+      question exists so that nothing important is lost to the
+      shape of the protocol. It also hands the last word back to
+      the person, which is the right way to close a session
+      about their own life.
+
+    sufficient_when: >
+      Anything, including nothing. "No, I think that's it" is a
+      complete and common answer.
+
+    probe_if:
+      - Something is raised but stays generic.
+
+    probe_examples:
+      - "Tell me more."
+      - "What do you mean by that?"
+
+    max_probes: 1
+
+    nothing_else_rule: >
+      If nothing comes, thank the person warmly and move to the
+      exit sequence. Do NOT prompt with topics, do not list what
+      was covered, do not ask "are you sure?" A person who says
+      there is nothing else has finished, and honouring that is
+      part of the register.
+
+    other_role_material: >
+      This question sometimes surfaces material belonging to a
+      DIFFERENT role. Acknowledge it warmly, note it for a
+      future session, and do not pursue it here. The session
+      covers one role.
+
+    never_probe_for: >
+      Anything the session already asked and the person already
+      answered. This is an opening, not a second pass.
+
+# =============================================================
+# EXIT SEQUENCE
+# Mechanical turns after the final question, before the card.
+# =============================================================
+
+exit_sequence:
+
+  - step: 1
+    id: name_confirmation
+    type: mechanical_turn
+    text: >
+      "Before I put this together — I'd like to make sure I've
+      got the names right. Would you like to spell them, or type
+      them in?"
+    behaviour: >
+      Present the names captured during the session and offer
+      BOTH input modes. Typing suits someone at a desk; spelling
+      aloud suits someone walking or driving, and the session
+      may well have been conducted on the move. Neither is
+      assumed.
+    rationale: >
+      See doctrine: name_capture. Spelling is deferred to here
+      precisely so it never intrudes on the relationship
+      questions. By this point the emotional material is behind
+      them, and correcting a spelling is a light administrative
+      act rather than an interruption.
+    tolerance: >
+      A name the person cannot recall or does not wish to
+      correct is left as captured, or left blank. Never press.
+      Some names genuinely do not come back, and a blank in the
+      card is a smaller cost than the implication that they
+      should have remembered.
+
+  - step: 2
+    id: close
+    type: mechanical_turn
+    behaviour: >
+      Thank the person, tell them the Role Card is being
+      generated, and end. Do NOT summarise the session, do not
+      offer an interpretation, do not name a pattern. The card
+      is where the material comes back to them
+      (see doctrine: no_live_interpretation).
+
+# =============================================================
+# OPEN ITEMS — carried into P1 and P2 drafting
+# =============================================================
+
+open_items:
+
+  distress_stance_positive_form:
+    priority: "HIGHEST. Write before the first pilot."
+    problem: >
+      The doctrine says what the tool must NOT do when distress
+      appears — do not probe, do not press, do not reassure
+      falsely. It does not yet say what the tool SHOULD say. Q11
+      and Q19 both make this live, and a model with a
+      prohibition and no positive instruction will improvise,
+      usually toward therapeutic language it should not be
+      using.
+    needs: >
+      A small set of acknowledgement moves that are warm,
+      non-clinical, non-probing, and that continue the session
+      without abandoning the person mid-sentence. Also a rule
+      for the rare case where a session should be paused or
+      closed early.
+
+  hypothesis_b_instrument:
+    status: "UNRESOLVED — settle when P2 is drafted."
+    problem: >
+      The flow is elicitation-only. Nothing in it manufactures
+      the "understanding they didn't have 20 minutes ago" that
+      Hypothesis B depends on, and doctrine has since made this
+      harder BY DESIGN: no_live_interpretation,
+      no_interpretation_rule, deflection_rule, and Q16's
+      inconsistency_handling all systematically forbid the tool
+      from producing insight during the conversation.
+    assessment: >
+      That is the right call for the register. But it means the
+      insight must be carried almost entirely by the Role Card,
+      which must be an explicit design decision rather than a
+      discovery made in pilot. Sharpened further by
+      method_intent.consequence_for_the_pilot: the single card
+      is the harder case, since it has none of the cross-role
+      pattern material the per-question objectives point toward.
+
+  resumption_design: >
+    Re-entry after an interrupted session. Needs a recap turn
+    that locates the person without reading their answers back
+    ("We were on the Berlin job, and we'd got as far as the
+    people you worked with — shall we pick up there?"). Seams
+    are visible from context_dependency: resume at any point
+    where the next question is standalone, or where its
+    dependency is satisfiable by a two-line recap.
+
+  deferred_material_mechanism: >
+    Handling for material the person raises that belongs to a
+    DIFFERENT role conversation. Arises at Q2 (split roles), Q17
+    (people from other roles) and Q21 (explicitly). Currently
+    handled ad hoc in three places; should be solved once as a
+    single doctrine rule.
+
+  parked_expectations_question:
+    status: "Cut for simplicity. NOT abandoned."
+    proposed_text: "What were you expecting it to be like — before
+                    you started, before you knew how it would go?"
+    proposed_position: "Immediately after Q8."
+    objective: >
+      What the person projected onto the role before entering
+      it. The value is the DELTA against what the role turned
+      out to be. Across roles, repeated misreading of business
+      context or people, or optimism followed by a hard landing,
+      is a finding of real consequence — it says the work before
+      the next move is calibration, not more searching. Someone
+      about to change career on wishful thinking needs to see
+      that pattern in their own history.
+    hindsight_warning: >
+      Expectations recalled after the fact are contaminated by
+      the outcome — a role that ended badly produces remembered
+      doubts that may not have existed. Phrasing must push back
+      to the moment BEFORE they knew. Where an answer is clearly
+      retrospective, record it as such: a retrospective
+      judgement is useful data, but it is not a baseline.
+    no_delta_in_session: >
+      The tool must NOT compare the expectation to anything
+      later in the session. Naming the gap live turns a
+      reflective session into being caught out.
+
+  unplaced_business_context_question:
+    status: "Displaced during renumbering. Never reinstated."
+    text: "What was going on in the company when you arrived —
+           growing, restructuring, something else?"
+    note: >
+      Must be reinstated or explicitly dropped before v1.1. The
+      Role Card has a business context section whose only
+      current source is Q3. Arrival (after Q5) is the natural
+      home if it returns.
+
+  negative_relationships:
+    status: "Deliberately excluded from this iteration."
+    note: >
+      The original list had "people who made it harder." Left
+      out of Q17: it invites grievance, and Q11 already catches
+      it where it mattered enough to surface. Revisit if pilots
+      show the gap.
+
+  prompt_injection_and_rule_adherence:
+    note: >
+      The doctrine block now carries eleven rules and most of
+      the design decisions in the bank. That is good for
+      maintainability but means P1 is a substantial prompt, and
+      the doctrine is where adherence failures will show up
+      first — particularly no_live_interpretation, which runs
+      against a model's strong default to be helpful and
+      insightful. Test specifically: a session where the person
+      says something that invites interpretation, and check the
+      tool stays silent.

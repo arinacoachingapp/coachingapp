@@ -4,45 +4,254 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { handleGenerateRoleCard } from './server/generateRoleCard.js'
+import { handleInterviewTurn } from './server/interviewTurn.js'
+import { handleSpeak } from './server/speak.js'
+import { handleTranscribe } from './server/transcribe.js'
+import {
+  handleAdminAdmins,
+  handleAdminMe,
+  handleAdminPromptVersion,
+  handleAdminPrompts,
+  handleAdminSettings,
+} from './server/adminHandlers.js'
+import { handleCareerSettings } from './server/careerSettings.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+function readJsonBody(req, limitBytes = 12 * 1024 * 1024) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const chunks = []
+      let size = 0
+      for await (const chunk of req) {
+        size += chunk.length
+        if (size > limitBytes) {
+          reject(new Error('Request body too large'))
+          return
+        }
+        chunks.push(chunk)
+      }
+      const body = Buffer.concat(chunks).toString('utf8')
+      resolve(body ? JSON.parse(body) : {})
+    } catch (error) {
+      reject(error)
+    }
+  })
+}
+
+function sendJson(res, status, body) {
+  res.statusCode = status
+  res.setHeader('Content-Type', 'application/json')
+  res.end(JSON.stringify(body))
+}
+
+function sendBinary(res, status, contentType, buffer) {
+  res.statusCode = status
+  res.setHeader('Content-Type', contentType)
+  res.setHeader('Cache-Control', 'no-store')
+  res.end(buffer)
+}
+
+async function routeAdmin(req, res, env, pathname) {
+  const auth = req.headers.authorization
+  const sub = pathname.replace(/^\/api\/admin\/?/, '').replace(/\/$/, '')
+
+  if (sub === 'me' && req.method === 'GET') {
+    return handleAdminMe({ authorization: auth, env })
+  }
+
+  if (sub === 'settings') {
+    const body = req.method === 'GET' ? {} : await readJsonBody(req)
+    return handleAdminSettings({
+      authorization: auth,
+      env,
+      method: req.method,
+      body,
+    })
+  }
+
+  if (sub === 'admins') {
+    const body = req.method === 'GET' ? {} : await readJsonBody(req)
+    return handleAdminAdmins({
+      authorization: auth,
+      env,
+      method: req.method,
+      body,
+    })
+  }
+
+  if (sub.startsWith('admins/')) {
+    const email = decodeURIComponent(sub.slice('admins/'.length))
+    return handleAdminAdmins({
+      authorization: auth,
+      env,
+      method: req.method,
+      email,
+    })
+  }
+
+  if (sub === 'prompts') {
+    return handleAdminPrompts({
+      authorization: auth,
+      env,
+      method: req.method,
+      key: null,
+      body: {},
+    })
+  }
+
+  if (sub.startsWith('prompts/')) {
+    const rest = sub.slice('prompts/'.length)
+    const parts = rest.split('/').filter(Boolean)
+    const key = decodeURIComponent(parts[0])
+    if (parts[1] === 'versions' && parts[2] && req.method === 'GET') {
+      return handleAdminPromptVersion({
+        authorization: auth,
+        env,
+        key,
+        version: parts[2],
+      })
+    }
+    const body = ['PUT', 'POST'].includes(req.method) ? await readJsonBody(req) : {}
+    return handleAdminPrompts({
+      authorization: auth,
+      env,
+      method: req.method,
+      key,
+      body,
+    })
+  }
+
+  return { status: 404, body: { error: 'Not found' } }
+}
 
 function careerApiPlugin(env) {
   return {
     name: 'career-api',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        if (req.url?.split('?')[0] !== '/api/career/generate-role-card') {
-          next()
+        const url = req.url?.split('?')[0]
+
+        if (url === '/api/career/generate-role-card') {
+          if (req.method !== 'POST') {
+            sendJson(res, 405, { error: 'Method not allowed' })
+            return
+          }
+          try {
+            const json = await readJsonBody(req)
+            const result = await handleGenerateRoleCard({
+              authorization: req.headers.authorization,
+              sessionId: json.sessionId,
+              env,
+            })
+            sendJson(res, result.status, result.body)
+          } catch (error) {
+            console.error('Generate role card error:', error)
+            sendJson(res, 500, { error: error.message || 'Internal server error' })
+          }
           return
         }
 
-        if (req.method !== 'POST') {
-          res.statusCode = 405
-          res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify({ error: 'Method not allowed' }))
+        if (url === '/api/career/interview-turn') {
+          if (req.method !== 'POST') {
+            sendJson(res, 405, { error: 'Method not allowed' })
+            return
+          }
+          try {
+            const json = await readJsonBody(req)
+            const result = await handleInterviewTurn({
+              authorization: req.headers.authorization,
+              sessionId: json.sessionId,
+              action: json.action,
+              message: json.message,
+              names: json.names,
+              env,
+            })
+            sendJson(res, result.status, result.body)
+          } catch (error) {
+            console.error('Interview turn error:', error)
+            sendJson(res, 500, { error: error.message || 'Internal server error' })
+          }
           return
         }
 
-        try {
-          const chunks = []
-          for await (const chunk of req) chunks.push(chunk)
-          const body = Buffer.concat(chunks).toString('utf8')
-          const json = body ? JSON.parse(body) : {}
-          const result = await handleGenerateRoleCard({
-            authorization: req.headers.authorization,
-            sessionId: json.sessionId,
-            env,
-          })
-          res.statusCode = result.status
-          res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify(result.body))
-        } catch (error) {
-          console.error('Generate role card error:', error)
-          res.statusCode = 500
-          res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify({ error: error.message || 'Internal server error' }))
+        if (url === '/api/career/speak') {
+          if (req.method !== 'POST') {
+            sendJson(res, 405, { error: 'Method not allowed' })
+            return
+          }
+          try {
+            const json = await readJsonBody(req)
+            const result = await handleSpeak({
+              authorization: req.headers.authorization,
+              text: json.text,
+              voiceId: json.voiceId,
+              env,
+            })
+            if (result.binary) {
+              sendBinary(res, result.status, result.contentType, result.buffer)
+            } else {
+              sendJson(res, result.status, result.body)
+            }
+          } catch (error) {
+            console.error('Speak error:', error)
+            sendJson(res, 500, { error: error.message || 'Internal server error' })
+          }
+          return
         }
+
+        if (url === '/api/career/transcribe') {
+          if (req.method !== 'POST') {
+            sendJson(res, 405, { error: 'Method not allowed' })
+            return
+          }
+          try {
+            const json = await readJsonBody(req)
+            const result = await handleTranscribe({
+              authorization: req.headers.authorization,
+              audioBase64: json.audioBase64,
+              format: json.format,
+              language: json.language,
+              env,
+            })
+            sendJson(res, result.status, result.body)
+          } catch (error) {
+            console.error('Transcribe error:', error)
+            sendJson(res, 500, { error: error.message || 'Internal server error' })
+          }
+          return
+        }
+
+        if (url === '/api/career/settings') {
+          if (req.method !== 'GET') {
+            sendJson(res, 405, { error: 'Method not allowed' })
+            return
+          }
+          try {
+            const result = await handleCareerSettings({
+              authorization: req.headers.authorization,
+              env,
+            })
+            sendJson(res, result.status, result.body)
+          } catch (error) {
+            console.error('Career settings error:', error)
+            sendJson(res, 500, { error: error.message || 'Internal server error' })
+          }
+          return
+        }
+
+        if (url?.startsWith('/api/admin')) {
+          try {
+            const result = await routeAdmin(req, res, env, url)
+            sendJson(res, result.status, result.body)
+          } catch (error) {
+            console.error('Admin API error:', error)
+            sendJson(res, 500, { error: error.message || 'Internal server error' })
+          }
+          return
+        }
+
+        next()
       })
     },
   }

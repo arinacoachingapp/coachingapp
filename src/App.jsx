@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import RequireAuth from '@/components/auth/RequireAuth'
+import RequireAdmin from '@/components/auth/RequireAdmin'
 import CareerCompanion from '@/career/components/CareerCompanion'
+import AdminPromptsPage from '@/pages/AdminPromptsPage'
 import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage'
@@ -16,6 +18,26 @@ export default function App() {
           element={
             <RequireAuth message="Sign in to use Career Companion and save your reflections.">
               <CareerCompanion />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <RequireAuth message="Sign in to manage prompts.">
+              <RequireAdmin>
+                <AdminPromptsPage />
+              </RequireAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/*"
+          element={
+            <RequireAuth message="Sign in to manage prompts.">
+              <RequireAdmin>
+                <AdminPromptsPage />
+              </RequireAdmin>
             </RequireAuth>
           }
         />

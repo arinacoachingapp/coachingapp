@@ -1,5 +1,5 @@
-import { formatSessionDate, sessionStatusLabel } from '../lib/careerDb';
-import { TOTAL_QUESTIONS } from '../lib/questions';
+import { formatSessionDate, needsRoleCardGeneration, sessionProgressPercent, sessionStatusLabel } from '../lib/careerDb'
+import { PHASES } from '../lib/questions'
 
 export default function SessionHome({
   sessions,
@@ -16,8 +16,8 @@ export default function SessionHome({
       s.status === 'generating' ||
       s.status === 'failed' ||
       (s.status === 'completed' && !s.role_card)
-  );
-  const completed = sessions.filter((s) => s.status === 'completed' && s.role_card);
+  )
+  const completed = sessions.filter((s) => s.status === 'completed' && s.role_card)
 
   return (
     <div className="mx-auto w-full max-w-xl space-y-12">
@@ -30,7 +30,7 @@ export default function SessionHome({
         </h1>
         <p className="mx-auto max-w-md text-base leading-relaxed text-stone-500">
           A quiet, structured conversation about one chapter of your career — spoken or typed, at
-          your own pace.
+          your own pace. Follow-ups when something needs more texture; never a form.
         </p>
       </header>
 
@@ -52,23 +52,19 @@ export default function SessionHome({
             In progress
           </h2>
           <ul className="space-y-3">
-            {inProgress.map((session) => (
-              <SessionCard
-                key={session.id}
-                session={session}
-                primaryAction={
-                  !session.role_card &&
-                  (session.status === 'generating' ||
-                    session.status === 'failed' ||
-                    session.current_step >= TOTAL_QUESTIONS + 1)
-                    ? 'Generate role card'
-                    : 'Resume'
-                }
-                onAction={() => onResume(session.id)}
-                onDelete={onDelete}
-                deletingId={deletingId}
-              />
-            ))}
+            {inProgress.map((session) => {
+              const awaiting = needsRoleCardGeneration(session)
+              return (
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  primaryAction={awaiting ? 'Generate role card' : 'Resume'}
+                  onAction={() => onResume(session.id)}
+                  onDelete={onDelete}
+                  deletingId={deletingId}
+                />
+              )
+            })}
           </ul>
         </section>
       )}
@@ -93,23 +89,19 @@ export default function SessionHome({
         </section>
       )}
     </div>
-  );
+  )
 }
 
 function SessionCard({ session, primaryAction, onAction, onDelete, deletingId }) {
-  const awaitingRoleCard =
-    !session.role_card &&
-    (session.status === 'generating' ||
-      session.status === 'failed' ||
-      session.current_step >= TOTAL_QUESTIONS + 1);
-  const answered = session.current_step > 0 ? Math.min(session.current_step, TOTAL_QUESTIONS) : 0;
-  const progress = awaitingRoleCard
-    ? 100
-    : session.status === 'completed'
-      ? 100
-      : session.current_step > 0
-        ? Math.round((answered / TOTAL_QUESTIONS) * 100)
-        : 0;
+  const awaitingRoleCard = needsRoleCardGeneration(session)
+  const progress = sessionProgressPercent(session)
+  const phase = session.interview_state?.phase
+  const phaseHint =
+    phase === PHASES.NAME_CONFIRM
+      ? 'Confirming names'
+      : phase === PHASES.INTERVIEWING
+        ? 'In conversation'
+        : null
 
   return (
     <li className="rounded-sm border border-stone-200/90 bg-white p-5 shadow-[0_1px_3px_rgba(28,25,23,0.04)]">
@@ -119,8 +111,8 @@ function SessionCard({ session, primaryAction, onAction, onDelete, deletingId })
             {session.role_title || 'Untitled role'}
           </p>
           <p className="mt-1 text-xs text-stone-400">
-            {sessionStatusLabel(session.status, { awaitingRoleCard })} ·{' '}
-            {formatSessionDate(session.updated_at)}
+            {sessionStatusLabel(session.status, { awaitingRoleCard })}
+            {phaseHint ? ` · ${phaseHint}` : ''} · {formatSessionDate(session.updated_at)}
           </p>
           {!session.role_card && (
             <div className="mt-4">
@@ -153,5 +145,5 @@ function SessionCard({ session, primaryAction, onAction, onDelete, deletingId })
         {primaryAction}
       </button>
     </li>
-  );
+  )
 }

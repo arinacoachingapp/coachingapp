@@ -1,143 +1,237 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthProvider';
-import SessionHome from './SessionHome';
-import InterviewView from './InterviewView';
-import RoleCardDisplay from './RoleCardDisplay';
-import { AnimatedToggle, AnimatedToggleGroup } from './AnimatedToggles';
+import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthProvider'
+import SessionHome from './SessionHome'
+import InterviewView from './InterviewView'
+import RoleCardDisplay from './RoleCardDisplay'
+import { AnimatedToggle, AnimatedToggleGroup } from './AnimatedToggles'
 import {
   createCareerSession,
   listCareerSessions,
   fetchCareerSession,
-  saveCareerResponse,
-  updateCareerSessionStep,
   markSessionGenerating,
   resetSessionAwaitingGeneration,
   deleteCareerSession,
-  computeResumeStep,
   needsRoleCardGeneration,
-  responsesToMap,
   getAccessToken,
-} from '../lib/careerDb';
+  startInterviewTurn,
+  submitInterviewAnswer,
+  confirmInterviewNames,
+  updateRoleCard,
+} from '../lib/careerDb'
+import { OPENING, PHASES } from '../lib/questions'
 import {
-  getStepContent,
-  STEP_CLOSING,
-  STEP_FIRST_QUESTION,
-  STEP_OPENING,
-  TOTAL_QUESTIONS,
-} from '../lib/questions';
+  DEFAULT_INTERVIEW_VOICE_ID,
+  INTERVIEW_VOICES,
+  VOICE_STORAGE_KEY,
+  isAllowedVoiceId,
+} from '../lib/voices'
+import { fetchAdminMe, fetchCareerSettings } from '@/lib/adminApi'
 
 const VIEWS = {
   HOME: 'home',
   INTERVIEW: 'interview',
   GENERATING: 'generating',
   RESULT: 'result',
-};
+}
+
+function loadStoredVoiceId() {
+  try {
+    const stored = localStorage.getItem(VOICE_STORAGE_KEY)
+    if (isAllowedVoiceId(stored)) return stored
+  } catch {
+    // ignore
+  }
+  return null
+}
 
 export default function CareerCompanion() {
-  const { signOut } = useAuth();
-  const [view, setView] = useState(VIEWS.HOME);
-  const [sessions, setSessions] = useState([]);
-  const [loadingSessions, setLoadingSessions] = useState(true);
-  const [sessionId, setSessionId] = useState(null);
-  const [step, setStep] = useState(STEP_OPENING);
-  const [answers, setAnswers] = useState({});
-  const [roleCard, setRoleCard] = useState(null);
-  const [transcript, setTranscript] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [deletingId, setDeletingId] = useState(null);
-  const [inputMode, setInputMode] = useState('voice');
-  const [readAloud, setReadAloud] = useState(true);
+  const { signOut } = useAuth()
+  const [view, setView] = useState(VIEWS.HOME)
+  const [sessions, setSessions] = useState([])
+  const [loadingSessions, setLoadingSessions] = useState(true)
+  const [sessionId, setSessionId] = useState(null)
+  const [phase, setPhase] = useState(PHASES.OPENING)
+  const [utterance, setUtterance] = useState(OPENING.text)
+  const [progress, setProgress] = useState({ percent: 0 })
+  const [names, setNames] = useState([])
+  const [roleCard, setRoleCard] = useState(null)
+  const [transcript, setTranscript] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [deletingId, setDeletingId] = useState(null)
+  const [inputMode, setInputMode] = useState('voice')
+  const [readAloud, setReadAloud] = useState(true)
+  const [voiceId, setVoiceId] = useState(() => loadStoredVoiceId() || DEFAULT_INTERVIEW_VOICE_ID)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  const handleVoiceChange = (nextId) => {
+    if (!isAllowedVoiceId(nextId)) return
+    setVoiceId(nextId)
+    try {
+      localStorage.setItem(VOICE_STORAGE_KEY, nextId)
+    } catch {
+      // ignore
+    }
+  }
 
   const loadSessions = useCallback(async () => {
-    setLoadingSessions(true);
+    setLoadingSessions(true)
     try {
-      const data = await listCareerSessions();
-      setSessions(data);
+      const data = await listCareerSessions()
+      setSessions(data)
     } catch (err) {
-      setError(err.message);
+      setError(err.message)
     } finally {
-      setLoadingSessions(false);
+      setLoadingSessions(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    loadSessions();
-  }, [loadSessions]);
+    loadSessions()
+  }, [loadSessions])
+
+  useEffect(() => {
+    let cancelled = false
+    fetchAdminMe()
+      .then((me) => {
+        if (!cancelled) setIsAdmin(!!me.isAdmin)
+      })
+      .catch(() => {
+        if (!cancelled) setIsAdmin(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    // Only apply admin default when the user has never chosen a voice
+    if (loadStoredVoiceId()) return
+    let cancelled = false
+    fetchCareerSettings()
+      .then((data) => {
+        if (cancelled) return
+        if (isAllowedVoiceId(data.defaultVoiceId)) {
+          setVoiceId(data.defaultVoiceId)
+        }
+      })
+      .catch(() => {
+        // keep Alexandra fallback
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const applyTurnPayload = (data) => {
+    if (data.utterance) setUtterance(data.utterance)
+    if (data.phase) setPhase(data.phase)
+    if (data.progress) setProgress(data.progress)
+    if (data.names) setNames(data.names)
+    if (data.transcript) setTranscript(data.transcript)
+  }
 
   const resetInterviewState = () => {
-    setSessionId(null);
-    setStep(STEP_OPENING);
-    setAnswers({});
-    setRoleCard(null);
-    setTranscript(null);
-    setError('');
-  };
+    setSessionId(null)
+    setPhase(PHASES.OPENING)
+    setUtterance(OPENING.text)
+    setProgress({ percent: 0 })
+    setNames([])
+    setRoleCard(null)
+    setTranscript(null)
+    setError('')
+  }
 
   const goHome = async () => {
-    resetInterviewState();
-    setView(VIEWS.HOME);
-    await loadSessions();
-  };
+    resetInterviewState()
+    setView(VIEWS.HOME)
+    await loadSessions()
+  }
 
   const startNewSession = async () => {
-    setError('');
-    setSaving(true);
+    setError('')
+    setSaving(true)
     try {
-      const session = await createCareerSession();
-      setSessionId(session.id);
-      setStep(STEP_OPENING);
-      setAnswers({});
-      setRoleCard(null);
-      setTranscript(null);
-      setView(VIEWS.INTERVIEW);
+      const session = await createCareerSession()
+      setSessionId(session.id)
+      setPhase(PHASES.OPENING)
+      setUtterance(OPENING.text)
+      setProgress({ percent: 0 })
+      setNames([])
+      setRoleCard(null)
+      setTranscript(null)
+      setView(VIEWS.INTERVIEW)
     } catch (err) {
-      setError(err.message);
+      setError(err.message)
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   const loadSession = async (id, mode = VIEWS.INTERVIEW) => {
-    setError('');
-    setSaving(true);
+    setError('')
+    setSaving(true)
     try {
-      const { session, responses } = await fetchCareerSession(id);
-      setSessionId(session.id);
-      setAnswers(responsesToMap(responses));
+      const { session } = await fetchCareerSession(id)
+      setSessionId(session.id)
 
       if (session.status === 'completed' && session.role_card) {
-        setRoleCard(session.role_card);
-        setTranscript(session.transcript);
-        setView(VIEWS.RESULT);
-        return;
+        setRoleCard(session.role_card)
+        setTranscript(session.transcript)
+        setView(VIEWS.RESULT)
+        return
       }
 
-      const awaitingRoleCard = needsRoleCardGeneration(session, responses);
+      const awaitingRoleCard = needsRoleCardGeneration(session)
       if (awaitingRoleCard) {
         if (session.status === 'generating' || session.status === 'failed') {
-          await resetSessionAwaitingGeneration(id);
+          await resetSessionAwaitingGeneration(id)
         }
-        setStep(STEP_CLOSING);
-        setView(VIEWS.INTERVIEW);
-        return;
+        setPhase(PHASES.READY_FOR_CARD)
+        setUtterance(
+          session.interview_state?.last_utterance ||
+            "Thank you. I'm putting your Role Card together now — it'll be ready in a moment."
+        )
+        setProgress({ percent: 100 })
+        setNames(session.interview_state?.names || [])
+        setTranscript(session.transcript)
+        setView(VIEWS.INTERVIEW)
+        return
       }
 
-      const resumeStep = computeResumeStep(session, responses);
-      setStep(resumeStep);
-      setView(mode);
+      const state = session.interview_state
+      if (!state || state.phase === PHASES.OPENING) {
+        setPhase(PHASES.OPENING)
+        setUtterance(OPENING.text)
+        setProgress({ percent: 0 })
+        setNames([])
+      } else {
+        setPhase(state.phase || PHASES.INTERVIEWING)
+        setUtterance(state.last_utterance || OPENING.text)
+        setNames(state.names || [])
+        const done = state.completed_question_ids?.length || 0
+        setProgress({
+          percent: Math.min(99, Math.round((done / 21) * 100)),
+          section: null,
+          section_label: 'Interview',
+          question_id: state.current_question_id,
+          phase: state.phase,
+        })
+      }
+      setView(mode)
     } catch (err) {
-      setError(err.message);
+      setError(err.message)
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   const generateRoleCard = async (id) => {
-    setError('');
-    setView(VIEWS.GENERATING);
+    setError('')
+    setView(VIEWS.GENERATING)
     try {
-      const token = await getAccessToken();
+      const token = await getAccessToken()
       const res = await fetch('/api/career/generate-role-card', {
         method: 'POST',
         headers: {
@@ -145,109 +239,107 @@ export default function CareerCompanion() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ sessionId: id }),
-      });
-      const raw = await res.text();
-      let data;
+      })
+      const raw = await res.text()
+      let data
       try {
-        data = raw ? JSON.parse(raw) : {};
+        data = raw ? JSON.parse(raw) : {}
       } catch {
         throw new Error(
           res.ok
             ? 'Role card API returned a non-JSON response'
             : `Role card API unavailable (${res.status}). Check the Vercel function deploy and env vars.`
-        );
+        )
       }
-      if (!res.ok) throw new Error(data.error || 'Failed to generate role card');
+      if (!res.ok) throw new Error(data.error || 'Failed to generate role card')
 
-      setRoleCard(data.roleCard);
-      setTranscript(data.session?.transcript);
-      setView(VIEWS.RESULT);
+      setRoleCard(data.roleCard)
+      setTranscript(data.session?.transcript)
+      setView(VIEWS.RESULT)
     } catch (err) {
-      setError(err.message);
-      setView(VIEWS.INTERVIEW);
-      setStep(STEP_CLOSING);
+      setError(err.message)
+      setView(VIEWS.INTERVIEW)
+      setPhase(PHASES.READY_FOR_CARD)
       try {
-        await resetSessionAwaitingGeneration(id);
+        await resetSessionAwaitingGeneration(id)
       } catch {
-        // UI already shows retry; ignore secondary persistence errors
+        // UI already shows retry
       }
     }
-  };
+  }
 
-  const handleContinue = async () => {
-    if (step === STEP_OPENING) {
-      setSaving(true);
-      try {
-        await updateCareerSessionStep(sessionId, STEP_FIRST_QUESTION);
-        setStep(STEP_FIRST_QUESTION);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setSaving(false);
-      }
-      return;
+  const handleContinueOpening = async () => {
+    if (!sessionId) return
+    setSaving(true)
+    setError('')
+    try {
+      const data = await startInterviewTurn(sessionId)
+      applyTurnPayload(data)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
     }
-
-    if (step === STEP_CLOSING) {
-      setSaving(true);
-      try {
-        await markSessionGenerating(sessionId);
-        await generateRoleCard(sessionId);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setSaving(false);
-      }
-    }
-  };
+  }
 
   const handleSubmitAnswer = async (text) => {
-    const content = getStepContent(step);
-    if (!content || !sessionId) return;
-
-    setSaving(true);
-    setError('');
+    if (!sessionId) return
+    setSaving(true)
+    setError('')
     try {
-      await saveCareerResponse({
-        sessionId,
-        questionKey: content.key,
-        questionText: content.text,
-        responseText: text,
-        stepIndex: content.number,
-      });
-
-      const nextAnswers = { ...answers, [content.key]: text };
-      setAnswers(nextAnswers);
-
-      const nextStep = step < TOTAL_QUESTIONS ? step + 1 : STEP_CLOSING;
-      const extras = content.key === 'q1' ? { role_title: text.slice(0, 200) } : {};
-      await updateCareerSessionStep(sessionId, nextStep, extras);
-      setStep(nextStep);
+      const data = await submitInterviewAnswer(sessionId, text)
+      applyTurnPayload(data)
     } catch (err) {
-      setError(err.message);
+      setError(err.message)
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
+
+  const handleConfirmNames = async (confirmedNames) => {
+    if (!sessionId) return
+    setSaving(true)
+    setError('')
+    try {
+      const data = await confirmInterviewNames(sessionId, confirmedNames)
+      applyTurnPayload(data)
+      setPhase(PHASES.READY_FOR_CARD)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleGenerateCard = async () => {
+    if (!sessionId) return
+    setSaving(true)
+    try {
+      await markSessionGenerating(sessionId)
+      await generateRoleCard(sessionId)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this session? This cannot be undone.')) return;
-    setDeletingId(id);
+    if (!window.confirm('Delete this session? This cannot be undone.')) return
+    setDeletingId(id)
     try {
-      await deleteCareerSession(id);
-      if (sessionId === id) resetInterviewState();
-      await loadSessions();
-      if (view !== VIEWS.HOME) setView(VIEWS.HOME);
+      await deleteCareerSession(id)
+      if (sessionId === id) resetInterviewState()
+      await loadSessions()
+      if (view !== VIEWS.HOME) setView(VIEWS.HOME)
     } catch (err) {
-      setError(err.message);
+      setError(err.message)
     } finally {
-      setDeletingId(null);
+      setDeletingId(null)
     }
-  };
+  }
 
-  const content = getStepContent(step);
-  const isMessage = step === STEP_OPENING || step === STEP_CLOSING;
-  const savedAnswer = content?.key ? answers[content.key] : '';
+  const isAwaitingRoleCard = phase === PHASES.READY_FOR_CARD
 
   return (
     <div className="flex min-h-dvh flex-col bg-[#F7F5F1] text-stone-800">
@@ -278,6 +370,23 @@ export default function CareerCompanion() {
                   labelOn="Audio"
                   labelOff="Mute"
                 />
+                {readAloud && (
+                  <label className="flex items-center gap-1.5">
+                    <span className="sr-only">Narrator voice</span>
+                    <select
+                      value={voiceId}
+                      onChange={(e) => handleVoiceChange(e.target.value)}
+                      className="max-w-[7.5rem] truncate rounded-sm border border-stone-200 bg-white px-1.5 py-1 text-[10px] font-medium uppercase tracking-wider text-stone-600 outline-none hover:border-stone-300 focus:border-stone-400"
+                      aria-label="Narrator voice"
+                    >
+                      {INTERVIEW_VOICES.map((voice) => (
+                        <option key={voice.id} value={voice.id}>
+                          {voice.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <AnimatedToggleGroup
                   value={inputMode}
                   onChange={setInputMode}
@@ -287,6 +396,14 @@ export default function CareerCompanion() {
                   ]}
                 />
               </>
+            )}
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className="rounded-sm px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-wider text-stone-400 transition-colors hover:text-stone-600"
+              >
+                Admin
+              </Link>
             )}
             <button
               type="button"
@@ -318,27 +435,28 @@ export default function CareerCompanion() {
           />
         )}
 
-        {view === VIEWS.INTERVIEW && content && (
+        {view === VIEWS.INTERVIEW && (
           <InterviewView
-            step={step}
-            content={content}
-            savedAnswer={savedAnswer}
+            phase={phase}
+            utterance={utterance}
+            progress={progress}
+            names={names}
             inputMode={inputMode}
             readAloud={readAloud}
+            voiceId={voiceId}
             saving={saving}
             onSubmitAnswer={handleSubmitAnswer}
-            onContinue={handleContinue}
-            isMessage={isMessage}
-            isAwaitingRoleCard={step === STEP_CLOSING}
+            onContinueOpening={handleContinueOpening}
+            onConfirmNames={handleConfirmNames}
+            onGenerateCard={handleGenerateCard}
+            isAwaitingRoleCard={isAwaitingRoleCard}
           />
         )}
 
         {view === VIEWS.GENERATING && (
           <div className="flex flex-1 flex-col items-center justify-center py-20 text-center">
             <div className="h-px w-16 animate-pulse bg-stone-400" />
-            <p className="mt-8 font-serif text-2xl text-stone-800">
-              Composing your role card
-            </p>
+            <p className="mt-8 font-serif text-2xl text-stone-800">Composing your role card</p>
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-stone-500">
               Shaping your answers into a structured summary — carefully, in your own words.
             </p>
@@ -350,9 +468,14 @@ export default function CareerCompanion() {
             roleCard={roleCard}
             transcript={transcript}
             onStartNew={startNewSession}
+            onSave={async (nextCard) => {
+              if (!sessionId) return
+              await updateRoleCard(sessionId, nextCard)
+              setRoleCard(nextCard)
+            }}
           />
         )}
       </main>
     </div>
-  );
+  )
 }

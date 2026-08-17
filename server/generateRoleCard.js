@@ -1,18 +1,24 @@
 import { createClient } from '@supabase/supabase-js'
+import { buildTranscriptForCard } from './interview/interviewEngine.js'
+import { CARD_VERSION, versionTriple } from './interview/versions.js'
+import { loadRuntimePrompts } from './prompts/promptStore.js'
+import { PROMPT_DEFINITIONS } from './prompts/defaults.js'
+import { resolveRuntimeConfig } from './settings/settingsStore.js'
 
 const ROLE_CARD_KEYS = [
   'headline',
   'biggest_insight',
   'getting_the_role',
   'business_context',
-  'expectations',
-  'manager_and_team',
-  'environment_factor',
+  'mandate',
+  'why_chosen',
+  'saying_yes',
   'getting_into_the_role',
-  'micro_look',
   'macro_look',
-  'extra_thoughts',
+  'people',
+  'micro_look',
   'ending',
+  'extra_thoughts',
 ]
 
 const DEFAULT_MODEL = 'openai/gpt-5.6-luna'
@@ -29,49 +35,33 @@ function getUserSupabase(accessToken, env) {
   })
 }
 
-function buildRoleCardPrompt(transcript) {
+function buildRoleCardPrompt(transcript, interviewState, template) {
   const qaBlock = transcript
-    .map(
-      (item) =>
-        `Q${item.question_number}: ${item.question_text}\nA: ${item.response_text || '(no answer)'}`
-    )
+    .map((item) => {
+      const probes =
+        item.probes?.length > 0
+          ? `\nProbes used:\n${item.probes.map((p) => `- ${p}`).join('\n')}`
+          : ''
+      return `${item.question_key}: ${item.question_text}${probes}\nA: ${item.response_text || '(no answer)'}`
+    })
     .join('\n\n')
 
-  return `You are helping someone reflect on a past professional role. Your job is to produce a Role Card — a structured summary in the person's OWN words. Do NOT polish into corporate or recruiter language. Keep their authentic voice. Include what drained them as readily as what energised them.
+  const meta = interviewState
+    ? `Session meta (do not invent beyond transcript):
+- role_name: ${interviewState.role_name || 'unknown'}
+- tense: ${interviewState.tense || 'past'}
+- route: ${interviewState.route || 'unclear'}
+- is_managerial: ${interviewState.is_managerial}
+- boss_configuration: ${interviewState.boss_configuration}
+- names (corrected): ${(interviewState.names || []).join(', ') || 'none'}
+- version: interviewer ${interviewState.version?.interviewer || '?'}, bank ${interviewState.version?.bank || '?'}, card ${CARD_VERSION}
+`
+    : ''
 
-Based on these interview responses, produce a Role Card with exactly these sections:
+  const fallback = PROMPT_DEFINITIONS.find((d) => d.key === 'role_card_p2')?.content || ''
+  const source = template || fallback
 
-- headline: one sentence capturing the shape of the role (from Q1–4 answers)
-- biggest_insight: one or two lines, in their words (from Q21)
-- getting_the_role: one or two lines, in their words (from Q5)
-- business_context: one or two sentences (from Q6–7)
-- expectations: one sentence on expectations and clarity (from Q8)
-- manager_and_team: one or two sentences (from Q9–10)
-- environment_factor: one line naming what mattered most (from Q11)
-- getting_into_the_role: their account of becoming autonomous (from Q12)
-- micro_look: brief account close to their words (from Q13–15)
-- macro_look: bigger picture summary close to their words (from Q16–19)
-- extra_thoughts: only if Q22 had something specific; otherwise empty string
-- ending: brief summary in their words if the role is not current (from Q20); empty string if still in role or unclear
-
-Return ONLY valid JSON with exactly this structure (no markdown, no code blocks):
-{
-  "headline": "...",
-  "biggest_insight": "...",
-  "getting_the_role": "...",
-  "business_context": "...",
-  "expectations": "...",
-  "manager_and_team": "...",
-  "environment_factor": "...",
-  "getting_into_the_role": "...",
-  "micro_look": "...",
-  "macro_look": "...",
-  "extra_thoughts": "...",
-  "ending": "..."
-}
-
-INTERVIEW TRANSCRIPT:
-${qaBlock}`
+  return source.replaceAll('{{META}}', meta).replaceAll('{{TRANSCRIPT}}', qaBlock)
 }
 
 function parseRoleCardJson(text) {
@@ -82,13 +72,13 @@ function parseRoleCardJson(text) {
   return JSON.parse(cleaned.trim())
 }
 
-async function generateWithOpenRouter(prompt, env) {
+async function generateWithOpenRouter(prompt, env, modelOverride) {
   const apiKey = env.OPENROUTER_API_KEY
   if (!apiKey) {
     throw new Error('OpenRouter API key not configured')
   }
 
-  const model = env.OPENROUTER_MODEL || DEFAULT_MODEL
+  const model = modelOverride || env.OPENROUTER_MODEL || DEFAULT_MODEL
   const siteUrl = env.VITE_SITE_URL || 'http://localhost:5173'
 
   const response = await fetch(OPENROUTER_URL, {
@@ -122,6 +112,15 @@ async function generateWithOpenRouter(prompt, env) {
   return typeof content === 'string' ? content : JSON.stringify(content)
 }
 
+function isInterviewComplete(interviewState, transcript) {
+  if (interviewState?.phase === 'ready_for_card' || interviewState?.phase === 'closing') {
+    return true
+  }
+  // Legacy fixed-question sessions
+  if (!interviewState && transcript?.length >= 20) return true
+  return transcript?.length >= 15
+}
+
 /** Shared handler for Vite middleware and production Express. */
 export async function handleGenerateRoleCard({ authorization, sessionId, env }) {
   const accessToken = authorization?.replace(/^Bearer\s+/i, '')
@@ -144,7 +143,7 @@ export async function handleGenerateRoleCard({ authorization, sessionId, env }) 
 
   const { data: careerSession, error: sessionError } = await userSupabase
     .from('career_sessions')
-    .select('id, user_id, status')
+    .select('id, user_id, status, interview_state, transcript, role_title')
     .eq('id', sessionId)
     .single()
 
@@ -152,30 +151,55 @@ export async function handleGenerateRoleCard({ authorization, sessionId, env }) 
     return { status: 404, body: { error: 'Session not found' } }
   }
 
-  const { data: responses, error: responsesError } = await userSupabase
-    .from('career_responses')
-    .select('question_key, question_text, response_text, step_index')
-    .eq('session_id', sessionId)
-    .order('step_index')
+  const interviewState = careerSession.interview_state
+  let transcript = careerSession.transcript
 
-  if (responsesError) {
-    return { status: 500, body: { error: 'Failed to load responses' } }
+  if (interviewState?.turns?.length) {
+    transcript = buildTranscriptForCard(interviewState)
+  } else if (!transcript?.length) {
+    const { data: responses, error: responsesError } = await userSupabase
+      .from('career_responses')
+      .select('question_key, question_text, response_text, step_index')
+      .eq('session_id', sessionId)
+      .order('step_index')
+
+    if (responsesError) {
+      return { status: 500, body: { error: 'Failed to load responses' } }
+    }
+
+    transcript = (responses ?? []).map((r) => ({
+      question_key: r.question_key,
+      question_number: r.step_index,
+      question_text: r.question_text,
+      response_text: r.response_text,
+    }))
   }
 
-  const transcript = (responses ?? []).map((r) => ({
-    question_key: r.question_key,
-    question_number: r.step_index,
-    question_text: r.question_text,
-    response_text: r.response_text,
-  }))
-
-  if (transcript.length < 22) {
+  if (!isInterviewComplete(interviewState, transcript)) {
     return { status: 400, body: { error: 'Interview not complete' } }
   }
 
   let generatedText
   try {
-    generatedText = await generateWithOpenRouter(buildRoleCardPrompt(transcript), env)
+    let roleCardTemplate = null
+    let openrouterModel
+    try {
+      const runtime = await loadRuntimePrompts(userSupabase)
+      roleCardTemplate = runtime.role_card_p2
+    } catch (error) {
+      console.warn('Prompt load failed for role card, using defaults:', error.message)
+    }
+    try {
+      const config = await resolveRuntimeConfig(userSupabase, env)
+      openrouterModel = config.openrouterModel
+    } catch {
+      openrouterModel = env.OPENROUTER_MODEL || DEFAULT_MODEL
+    }
+    generatedText = await generateWithOpenRouter(
+      buildRoleCardPrompt(transcript, interviewState, roleCardTemplate),
+      env,
+      openrouterModel
+    )
   } catch (error) {
     console.error('OpenRouter generation failed:', error)
     return { status: 500, body: { error: error.message || 'Failed to generate role card' } }
@@ -195,17 +219,37 @@ export async function handleGenerateRoleCard({ authorization, sessionId, env }) 
     }
   }
 
+  // Empty ending for current roles
+  if (interviewState?.tense === 'present') {
+    roleCard.ending = ''
+  }
+
   const roleTitle =
-    transcript.find((t) => t.question_key === 'q1')?.response_text?.slice(0, 200) || null
+    interviewState?.role_name ||
+    transcript.find((t) => t.question_key === 'Q1' || t.question_key === 'q1')?.response_text?.slice(
+      0,
+      200
+    ) ||
+    careerSession.role_title ||
+    null
+
+  const versions = {
+    ...(interviewState?.version || versionTriple()),
+    card: CARD_VERSION,
+  }
 
   const { data: updated, error: updateError } = await userSupabase
     .from('career_sessions')
     .update({
       status: 'completed',
+      // Legacy check constraint career_sessions_current_step_check allows 0–24
       current_step: 24,
       role_card: roleCard,
       transcript,
       role_title: roleTitle,
+      interview_state: interviewState
+        ? { ...interviewState, phase: 'closing', version: versions }
+        : interviewState,
       completed_at: new Date().toISOString(),
     })
     .eq('id', sessionId)
@@ -217,5 +261,7 @@ export async function handleGenerateRoleCard({ authorization, sessionId, env }) 
     return { status: 500, body: { error: 'Failed to save role card' } }
   }
 
-  return { status: 200, body: { success: true, roleCard, session: updated } }
+  return { status: 200, body: { success: true, roleCard, session: updated, version: versions } }
 }
+
+export { ROLE_CARD_KEYS }
