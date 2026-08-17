@@ -27,6 +27,7 @@ import {
   isAllowedVoiceId,
 } from '../lib/voices'
 import { fetchAdminMe, fetchCareerSettings } from '@/lib/adminApi'
+import { unlockAudioFromUserGesture, attachAudioUnlockListeners } from '../lib/voice'
 
 const VIEWS = {
   HOME: 'home',
@@ -85,6 +86,10 @@ export default function CareerCompanion() {
     } finally {
       setLoadingSessions(false)
     }
+  }, [])
+
+  useEffect(() => {
+    attachAudioUnlockListeners()
   }, [])
 
   useEffect(() => {
@@ -150,6 +155,7 @@ export default function CareerCompanion() {
   }
 
   const startNewSession = async () => {
+    unlockAudioFromUserGesture()
     setError('')
     setSaving(true)
     try {
@@ -170,6 +176,7 @@ export default function CareerCompanion() {
   }
 
   const loadSession = async (id, mode = VIEWS.INTERVIEW) => {
+    unlockAudioFromUserGesture()
     setError('')
     setSaving(true)
     try {
@@ -269,43 +276,49 @@ export default function CareerCompanion() {
   }
 
   const handleContinueOpening = async () => {
-    if (!sessionId) return
+    if (!sessionId) return null
     setSaving(true)
     setError('')
     try {
       const data = await startInterviewTurn(sessionId)
       applyTurnPayload(data)
+      return data
     } catch (err) {
       setError(err.message)
+      return null
     } finally {
       setSaving(false)
     }
   }
 
   const handleSubmitAnswer = async (text) => {
-    if (!sessionId) return
+    if (!sessionId) return null
     setSaving(true)
     setError('')
     try {
       const data = await submitInterviewAnswer(sessionId, text)
       applyTurnPayload(data)
+      return data
     } catch (err) {
       setError(err.message)
+      return null
     } finally {
       setSaving(false)
     }
   }
 
   const handleConfirmNames = async (confirmedNames) => {
-    if (!sessionId) return
+    if (!sessionId) return null
     setSaving(true)
     setError('')
     try {
       const data = await confirmInterviewNames(sessionId, confirmedNames)
       applyTurnPayload(data)
       setPhase(PHASES.READY_FOR_CARD)
+      return data
     } catch (err) {
       setError(err.message)
+      return null
     } finally {
       setSaving(false)
     }
@@ -343,76 +356,81 @@ export default function CareerCompanion() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-[#F7F5F1] text-stone-800">
-      <header className="sticky top-0 z-20 border-b border-stone-200/80 bg-[#F7F5F1]/90 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-xl items-center justify-between gap-4 px-5 py-4 sm:px-6">
-          <div className="min-w-0 w-16">
-            {view !== VIEWS.HOME && (
+      <header className="sticky top-0 z-20 border-b border-stone-200/80 bg-[#F7F5F1]/90 backdrop-blur-sm pt-[env(safe-area-inset-top,0px)]">
+        <div className="mx-auto max-w-xl px-5 py-3 sm:px-6 sm:py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              {view !== VIEWS.HOME && (
+                <button
+                  type="button"
+                  onClick={goHome}
+                  className="shrink-0 text-xs font-medium uppercase tracking-[0.15em] text-stone-400 transition-colors hover:text-stone-700"
+                >
+                  ← Back
+                </button>
+              )}
+              <p className="truncate text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
+                Career Companion
+              </p>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className="rounded-sm px-2 py-1.5 text-[10px] font-medium uppercase tracking-wider text-stone-400 transition-colors hover:text-stone-600 sm:px-2.5"
+                >
+                  Admin
+                </Link>
+              )}
               <button
                 type="button"
-                onClick={goHome}
-                className="text-xs font-medium uppercase tracking-[0.15em] text-stone-400 transition-colors hover:text-stone-700"
+                onClick={signOut}
+                className="rounded-sm px-2 py-1.5 text-[10px] font-medium uppercase tracking-wider text-stone-400 transition-colors hover:text-stone-600 sm:px-2.5"
               >
-                ← Back
+                Sign out
               </button>
-            )}
+            </div>
           </div>
 
-          <p className="truncate text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
-            Career Companion
-          </p>
-
-          <div className="flex items-center gap-2">
-            {view === VIEWS.INTERVIEW && (
-              <>
-                <AnimatedToggle
-                  checked={readAloud}
-                  onChange={setReadAloud}
-                  labelOn="Audio"
-                  labelOff="Mute"
-                />
-                {readAloud && (
-                  <label className="flex items-center gap-1.5">
-                    <span className="sr-only">Narrator voice</span>
-                    <select
-                      value={voiceId}
-                      onChange={(e) => handleVoiceChange(e.target.value)}
-                      className="max-w-[7.5rem] truncate rounded-sm border border-stone-200 bg-white px-1.5 py-1 text-[10px] font-medium uppercase tracking-wider text-stone-600 outline-none hover:border-stone-300 focus:border-stone-400"
-                      aria-label="Narrator voice"
-                    >
-                      {INTERVIEW_VOICES.map((voice) => (
-                        <option key={voice.id} value={voice.id}>
-                          {voice.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                <AnimatedToggleGroup
-                  value={inputMode}
-                  onChange={setInputMode}
-                  options={[
-                    { value: 'voice', label: 'Voice' },
-                    { value: 'keyboard', label: 'Type' },
-                  ]}
-                />
-              </>
-            )}
-            {isAdmin && (
-              <Link
-                to="/admin"
-                className="rounded-sm px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-wider text-stone-400 transition-colors hover:text-stone-600"
-              >
-                Admin
-              </Link>
-            )}
-            <button
-              type="button"
-              onClick={signOut}
-              className="rounded-sm px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-wider text-stone-400 transition-colors hover:text-stone-600"
-            >
-              Sign out
-            </button>
-          </div>
+          {view === VIEWS.INTERVIEW && (
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2 border-t border-stone-200/60 pt-3 sm:justify-end">
+              <AnimatedToggle
+                checked={readAloud}
+                onChange={(next) => {
+                  unlockAudioFromUserGesture()
+                  setReadAloud(next)
+                }}
+                labelOn="Audio"
+                labelOff="Mute"
+              />
+              {readAloud && (
+                <label className="flex min-w-0 items-center">
+                  <span className="sr-only">Narrator voice</span>
+                  <select
+                    value={voiceId}
+                    onChange={(e) => handleVoiceChange(e.target.value)}
+                    className="max-w-[9rem] truncate rounded-sm border border-stone-200 bg-white px-1.5 py-1 text-[10px] font-medium uppercase tracking-wider text-stone-600 outline-none hover:border-stone-300 focus:border-stone-400 sm:max-w-[7.5rem]"
+                    aria-label="Narrator voice"
+                  >
+                    {INTERVIEW_VOICES.map((voice) => (
+                      <option key={voice.id} value={voice.id}>
+                        {voice.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <AnimatedToggleGroup
+                value={inputMode}
+                onChange={setInputMode}
+                options={[
+                  { value: 'voice', label: 'Voice' },
+                  { value: 'keyboard', label: 'Type' },
+                ]}
+              />
+            </div>
+          )}
         </div>
       </header>
 

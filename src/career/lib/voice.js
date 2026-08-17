@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  getSharedAudio,
+  playBlobOnSharedAudio,
+  stopSharedAudio,
+  unlockAudioFromUserGesture,
+} from './audioPlayback'
 import { getAccessToken } from './careerDb'
+
+export { unlockAudioFromUserGesture, isAudioUnlocked, attachAudioUnlockListeners } from './audioPlayback'
 
 export function isSpeechRecognitionSupported() {
   if (typeof window === 'undefined') return false
@@ -297,162 +305,202 @@ function rememberBlob(cache, key, blob) {
  * only when ElevenLabs is unavailable or the API request fails.
  */
 export function useSpeechSynthesis() {
-  const audioRef = useRef(null)
-  const objectUrlRef = useRef(null)
   const speakIdRef = useRef(0)
   const abortRef = useRef(null)
   const cacheRef = useRef(new Map())
+  const pendingRef = useRef(null)
   const [speaking, setSpeaking] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [playbackBlocked, setPlaybackBlocked] = useState(false)
   const supported = true // always — browser fallback or ElevenLabs
+
+  const clearPending = useCallback(() => {
+    pendingRef.current = null
+    setPlaybackBlocked(false)
+  }, [])
+
+  const markBlocked = useCallback((text, voiceId) => {
+    pendingRef.current = { text, voiceId }
+    setPlaybackBlocked(true)
+    setSpeaking(false)
+    setLoading(false)
+  }, [])
 
   const stopPlayback = useCallback(() => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel()
     }
-    if (audioRef.current) {
-      const audio = audioRef.current
-      audio.onerror = null
-      audio.onended = null
-      audio.pause()
-      audio.removeAttribute('src')
-      audio.load()
-      audioRef.current = null
-    }
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current)
-      objectUrlRef.current = null
-    }
+    stopSharedAudio()
   }, [])
 
   const stop = useCallback(() => {
-    // Invalidate any in-flight speak() so stale onerror/onended cannot start browser TTS
     speakIdRef.current += 1
     abortRef.current?.abort()
     abortRef.current = null
     stopPlayback()
     setLoading(false)
     setSpeaking(false)
-  }, [stopPlayback])
+    clearPending()
+  }, [clearPending, stopPlayback])
 
   const playBlob = useCallback(
     async (blob, speakId) => {
-      if (speakId !== speakIdRef.current) return false
-      stopPlayback()
-      if (speakId !== speakIdRef.current) return false
-
-      const url = URL.createObjectURL(blob)
-      objectUrlRef.current = url
-      const audio = new Audio(url)
-      audioRef.current = audio
-
-      audio.onended = () => {
-        if (speakId !== speakIdRef.current) return
-        setSpeaking(false)
-        setLoading(false)
-        if (objectUrlRef.current) {
-          URL.revokeObjectURL(objectUrlRef.current)
-          objectUrlRef.current = null
-        }
-      }
-
-      // Do NOT fall back to browser on element errors after a successful
-      // ElevenLabs response — that races with stop()/re-speak and doubles audio.
-      audio.onerror = () => {
-        if (speakId !== speakIdRef.current) return
-        setSpeaking(false)
-        setLoading(false)
-      }
+      if (speakId !== speakIdRef.current) return { ok: false, blocked: false }
 
       setLoading(false)
       setSpeaking(true)
-      try {
-        await audio.play()
-        return true
-      } catch {
-        return false
+
+      const result = await playBlobOnSharedAudio(blob)
+      if (speakId !== speakIdRef.current) return result
+
+      if (result.ok) {
+        clearPending()
+        setSpeaking(false)
+        return result
       }
+
+      if (result.blocked) {
+        return result
+      }
+
+      setSpeaking(false)
+      return result
     },
-    [stopPlayback]
+    [clearPending]
+  )
+
+  const fetchAndCacheBlob = useCallback(async (text, voiceId, speakId, signal) => {
+    const key = audioCacheKey(text, voiceId)
+    const cached = cacheRef.current.get(key)
+    if (cached) return cached
+
+    const token = await getAccessToken()
+    if (speakId !== speakIdRef.current) return null
+
+    const payload = { text }
+    if (voiceId) payload.voiceId = voiceId
+
+    const res = await fetch('/api/career/speak', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+      signal,
+    })
+    if (speakId !== speakIdRef.current) return null
+
+    const contentType = res.headers.get('content-type') || ''
+    if (res.ok && contentType.includes('audio')) {
+      const blob = await res.blob()
+      if (speakId !== speakIdRef.current) return null
+      rememberBlob(cacheRef.current, key, blob)
+      return blob
+    }
+    return null
+  }, [])
+
+  /** Warm the TTS cache without playing — useful while the user reads the prompt. */
+  const prefetch = useCallback(
+    (text, options = {}) => {
+      if (!text?.trim()) return
+      const key = audioCacheKey(text, options.voiceId)
+      if (cacheRef.current.has(key)) return
+
+      const speakId = speakIdRef.current
+      const controller = new AbortController()
+      fetchAndCacheBlob(text, options.voiceId, speakId, controller.signal).catch(() => {})
+    },
+    [fetchAndCacheBlob]
   )
 
   const speak = useCallback(
     async (text, options = {}) => {
-      if (!text?.trim()) return
+      if (!text?.trim()) return false
 
       abortRef.current?.abort()
       speakIdRef.current += 1
       const speakId = speakIdRef.current
       stopPlayback()
+      clearPending()
 
       const isStale = () => speakId !== speakIdRef.current
+      const voiceId = options.voiceId
 
       const playBrowser = async () => {
-        if (isStale()) return
+        if (isStale()) return false
+        unlockAudioFromUserGesture()
+        getSharedAudio()
         if (typeof window !== 'undefined' && window.speechSynthesis) {
           window.speechSynthesis.cancel()
         }
         setLoading(false)
         setSpeaking(true)
         await speakWithBrowser(text)
-        if (!isStale()) setSpeaking(false)
-      }
-
-      const key = audioCacheKey(text, options.voiceId)
-      const cached = cacheRef.current.get(key)
-      if (cached) {
-        const played = await playBlob(cached, speakId)
-        if (played || isStale()) return
-        await playBrowser()
-        return
-      }
-
-      setSpeaking(true)
-      setLoading(true)
-
-      try {
-        const token = await getAccessToken()
-        if (isStale()) return
-
-        const payload = { text }
-        if (options.voiceId) payload.voiceId = options.voiceId
-
-        const controller = new AbortController()
-        abortRef.current = controller
-
-        const res = await fetch('/api/career/speak', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        })
-        if (isStale()) return
-
-        const contentType = res.headers.get('content-type') || ''
-        if (res.ok && contentType.includes('audio')) {
-          const blob = await res.blob()
-          if (isStale()) return
-          rememberBlob(cacheRef.current, key, blob)
-          const played = await playBlob(blob, speakId)
-          if (played || isStale()) return
-          await playBrowser()
-          return
+        if (!isStale()) {
+          setSpeaking(false)
+          clearPending()
         }
-
-        // API missing key, 5xx, or non-audio JSON → intentional browser fallback
-        await playBrowser()
-      } catch (error) {
-        if (error?.name === 'AbortError' || isStale()) return
-        await playBrowser()
+        return true
       }
+
+      const key = audioCacheKey(text, voiceId)
+      let blob = cacheRef.current.get(key)
+
+      if (!blob) {
+        setSpeaking(true)
+        setLoading(true)
+        try {
+          const controller = new AbortController()
+          abortRef.current = controller
+          blob = await fetchAndCacheBlob(text, voiceId, speakId, controller.signal)
+        } catch (error) {
+          if (error?.name === 'AbortError' || isStale()) return false
+          return playBrowser()
+        }
+      }
+
+      if (isStale()) return false
+
+      if (blob) {
+        const result = await playBlob(blob, speakId)
+        if (isStale()) return false
+        if (result.ok) return true
+        if (result.blocked) {
+          markBlocked(text, voiceId)
+          return false
+        }
+        return playBrowser()
+      }
+
+      return playBrowser()
     },
-    [playBlob, stopPlayback]
+    [clearPending, fetchAndCacheBlob, markBlocked, playBlob, stopPlayback]
   )
 
-  useEffect(() => () => stop(), [stop])
+  const retryPlayback = useCallback(async () => {
+    unlockAudioFromUserGesture()
+    const pending = pendingRef.current
+    if (!pending) return false
+    setPlaybackBlocked(false)
+    pendingRef.current = null
+    return speak(pending.text, { voiceId: pending.voiceId })
+  }, [speak])
 
-  return { speaking, loading, supported, speak, stop }
+  useEffect(() => {
+    getSharedAudio()
+    return () => stop()
+  }, [stop])
+
+  return {
+    speaking,
+    loading,
+    playbackBlocked,
+    supported,
+    speak,
+    prefetch,
+    retryPlayback,
+    stop,
+  }
 }

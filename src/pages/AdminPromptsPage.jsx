@@ -278,20 +278,26 @@ export default function AdminPromptsPage() {
 
   return (
     <div className="min-h-dvh bg-[#F7F5F1] text-stone-800">
-      <header className="sticky top-0 z-20 border-b border-stone-200/80 bg-[#F7F5F1]/90 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4 sm:px-6">
-          <Link
-            to="/"
-            className="text-xs font-medium uppercase tracking-[0.15em] text-stone-400 hover:text-stone-700"
-          >
-            ← Companion
-          </Link>
-          <p className="text-xs font-medium uppercase tracking-[0.2em] text-stone-500">Admin</p>
-          <div className="flex gap-2">
+      <header className="sticky top-0 z-20 border-b border-stone-200/80 bg-[#F7F5F1]/90 backdrop-blur-sm pt-[env(safe-area-inset-top,0px)]">
+        <div className="mx-auto max-w-6xl px-5 py-3 sm:px-6 sm:py-4">
+          <div className="flex items-center justify-between gap-3">
+            <Link
+              to="/"
+              className="shrink-0 text-xs font-medium uppercase tracking-[0.15em] text-stone-400 hover:text-stone-700"
+            >
+              ← Companion
+            </Link>
+            <p className="truncate text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
+              Admin
+            </p>
+            <div className="w-16 shrink-0 sm:w-20" aria-hidden />
+          </div>
+
+          <div className="-mx-1 mt-3 flex gap-1 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch] sm:mx-0 sm:mt-4 sm:overflow-visible sm:pb-0">
             <button
               type="button"
               onClick={() => setTab('prompts')}
-              className={`rounded-sm px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-wider ${
+              className={`shrink-0 rounded-sm px-3 py-2 text-[10px] font-medium uppercase tracking-wider sm:px-2.5 sm:py-1.5 ${
                 tab === 'prompts' ? 'bg-stone-900 text-[#F7F5F1]' : 'text-stone-400 hover:text-stone-700'
               }`}
             >
@@ -300,7 +306,7 @@ export default function AdminPromptsPage() {
             <button
               type="button"
               onClick={() => setTab('settings')}
-              className={`rounded-sm px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-wider ${
+              className={`shrink-0 rounded-sm px-3 py-2 text-[10px] font-medium uppercase tracking-wider sm:px-2.5 sm:py-1.5 ${
                 tab === 'settings' ? 'bg-stone-900 text-[#F7F5F1]' : 'text-stone-400 hover:text-stone-700'
               }`}
             >
@@ -309,7 +315,7 @@ export default function AdminPromptsPage() {
             <button
               type="button"
               onClick={() => setTab('admins')}
-              className={`rounded-sm px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-wider ${
+              className={`shrink-0 rounded-sm px-3 py-2 text-[10px] font-medium uppercase tracking-wider sm:px-2.5 sm:py-1.5 ${
                 tab === 'admins' ? 'bg-stone-900 text-[#F7F5F1]' : 'text-stone-400 hover:text-stone-700'
               }`}
             >
@@ -360,7 +366,7 @@ export default function AdminPromptsPage() {
               {prompt && (
                 <>
                   <div>
-                    <h2 className="font-serif text-3xl text-stone-900">{prompt.title}</h2>
+                    <h2 className="font-serif text-2xl text-stone-900 sm:text-3xl">{prompt.title}</h2>
                     <p className="mt-2 max-w-2xl text-sm leading-relaxed text-stone-500">
                       {prompt.description}
                     </p>
@@ -586,17 +592,17 @@ export default function AdminPromptsPage() {
               </p>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <input
                 value={newAdmin}
                 onChange={(e) => setNewAdmin(e.target.value)}
                 placeholder="email@company.com"
-                className="min-w-0 flex-1 rounded-sm border border-stone-200 bg-white px-3 py-2 text-sm outline-none focus:border-stone-400"
+                className="min-w-0 flex-1 rounded-sm border border-stone-200 bg-white px-3 py-2.5 text-base outline-none focus:border-stone-400 sm:text-sm"
               />
               <button
                 type="button"
                 onClick={handleAddAdmin}
-                className="rounded-sm bg-stone-900 px-4 py-2 text-sm text-[#F7F5F1]"
+                className="shrink-0 rounded-sm bg-stone-900 px-4 py-2.5 text-sm text-[#F7F5F1] sm:py-2"
               >
                 Add
               </button>

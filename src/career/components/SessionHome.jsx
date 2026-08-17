@@ -25,7 +25,7 @@ export default function SessionHome({
         <p className="text-xs font-medium uppercase tracking-[0.25em] text-stone-400">
           Career Companion
         </p>
-        <h1 className="font-serif text-4xl font-medium tracking-tight text-stone-900 sm:text-5xl">
+        <h1 className="font-serif text-3xl font-medium tracking-tight text-stone-900 sm:text-5xl">
           Reflect on a role
         </h1>
         <p className="mx-auto max-w-md text-base leading-relaxed text-stone-500">

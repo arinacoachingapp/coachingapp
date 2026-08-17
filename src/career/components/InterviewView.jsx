@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useSpeechRecognition, useSpeechSynthesis } from '../lib/voice'
+import { unlockAudioFromUserGesture, useSpeechRecognition, useSpeechSynthesis } from '../lib/voice'
 import { PHASES, sectionLabel } from '../lib/questions'
 
 export default function InterviewView({
@@ -31,20 +31,42 @@ export default function InterviewView({
     setEditableNames(names || [])
   }, [names])
 
-  const { speak, stop: stopSpeaking, speaking, loading: voiceLoading, supported: ttsSupported } =
-    useSpeechSynthesis()
+  const {
+    speak,
+    prefetch,
+    retryPlayback,
+    stop: stopSpeaking,
+    speaking,
+    loading: voiceLoading,
+    playbackBlocked,
+    supported: ttsSupported,
+  } = useSpeechSynthesis()
   const speakRef = useRef(speak)
+  const prefetchRef = useRef(prefetch)
   const stopSpeakingRef = useRef(stopSpeaking)
   const voiceIdRef = useRef(voiceId)
+  const spokenUtteranceRef = useRef(null)
   speakRef.current = speak
+  prefetchRef.current = prefetch
   stopSpeakingRef.current = stopSpeaking
   voiceIdRef.current = voiceId
 
   const speakUtterance = useCallback(
-    (text) => {
-      speak(text, { voiceId: voiceIdRef.current })
+    async (text) => {
+      if (!text?.trim()) return false
+      spokenUtteranceRef.current = text
+      unlockAudioFromUserGesture()
+      return speak(text, { voiceId: voiceIdRef.current })
     },
     [speak]
+  )
+
+  const maybeSpeakAfterTurn = useCallback(
+    async (data) => {
+      if (!readAloud || !data?.utterance) return
+      await speakUtterance(data.utterance)
+    },
+    [readAloud, speakUtterance]
   )
 
   const handleVoiceResult = useCallback((text) => {
@@ -62,17 +84,31 @@ export default function InterviewView({
     })
 
   useEffect(() => {
-    if (readAloud && ttsSupported && utterance) {
-      const timer = setTimeout(() => {
-        speakRef.current(utterance, { voiceId: voiceIdRef.current })
-      }, 300)
-      return () => {
-        clearTimeout(timer)
-        stopSpeakingRef.current()
-      }
+    if (readAloud && utterance) {
+      prefetchRef.current(utterance, { voiceId: voiceIdRef.current })
     }
-    stopSpeakingRef.current()
-    return undefined
+  }, [utterance, readAloud, voiceId])
+
+  useEffect(() => {
+    if (!readAloud || !ttsSupported || !utterance) {
+      stopSpeakingRef.current()
+      return undefined
+    }
+    if (spokenUtteranceRef.current === utterance) {
+      spokenUtteranceRef.current = null
+      return undefined
+    }
+
+    const timer = setTimeout(() => {
+      if (spokenUtteranceRef.current === utterance) return
+      speakRef.current(utterance, { voiceId: voiceIdRef.current }).then((played) => {
+        if (played) spokenUtteranceRef.current = utterance
+      })
+    }, 200)
+
+    return () => {
+      clearTimeout(timer)
+    }
   }, [utterance, phase, readAloud, ttsSupported])
 
   useEffect(() => {
@@ -83,8 +119,21 @@ export default function InterviewView({
   }, [stopListening])
 
   const toggleMic = () => {
+    unlockAudioFromUserGesture()
     if (listening || transcribing) stopListening()
-    else startListening()
+    else {
+      stopSpeaking()
+      startListening()
+    }
+  }
+
+  const handleTapToHear = () => {
+    unlockAudioFromUserGesture()
+    if (playbackBlocked) {
+      retryPlayback()
+      return
+    }
+    speakUtterance(utterance)
   }
 
   const percent = progress?.percent ?? 0
@@ -97,13 +146,17 @@ export default function InterviewView({
           ? 'Finishing'
           : progress?.section_label || sectionLabel(progress?.section) || 'Interview'
 
-  const handlePrimary = () => {
+  const handlePrimary = async () => {
+    unlockAudioFromUserGesture()
+
     if (phase === PHASES.OPENING) {
-      onContinueOpening()
+      const data = await onContinueOpening()
+      await maybeSpeakAfterTurn(data)
       return
     }
     if (phase === PHASES.NAME_CONFIRM) {
-      onConfirmNames(editableNames)
+      const data = await onConfirmNames(editableNames)
+      await maybeSpeakAfterTurn(data)
       return
     }
     if (isAwaitingRoleCard || phase === PHASES.READY_FOR_CARD) {
@@ -112,7 +165,8 @@ export default function InterviewView({
     }
     if (!answer.trim()) return
     stopListening()
-    onSubmitAnswer(answer.trim())
+    const data = await onSubmitAnswer(answer.trim())
+    await maybeSpeakAfterTurn(data)
   }
 
   const removeName = (idx) => {
@@ -150,14 +204,27 @@ export default function InterviewView({
           </p>
         </blockquote>
 
+        {readAloud && ttsSupported && playbackBlocked && (
+          <button
+            type="button"
+            onClick={handleTapToHear}
+            className="mt-4 w-full rounded-sm border border-stone-300 bg-white px-4 py-3 text-left text-sm text-stone-700 shadow-sm transition-colors hover:border-stone-400 active:bg-stone-50"
+          >
+            <span className="font-medium">Tap to hear this question</span>
+            <span className="mt-0.5 block text-xs text-stone-400">
+              Your browser needs a tap to start audio
+            </span>
+          </button>
+        )}
+
         {readAloud && ttsSupported && (
           <div className="mt-5 flex items-center gap-4">
             <button
               type="button"
-              onClick={() => speakUtterance(utterance)}
+              onClick={handleTapToHear}
               className="text-xs font-medium uppercase tracking-[0.15em] text-stone-400 transition-colors hover:text-stone-700"
             >
-              {voiceLoading ? 'Loading voice…' : 'Read aloud'}
+              {voiceLoading ? 'Loading voice…' : speaking ? 'Playing…' : 'Read aloud'}
             </button>
             {(speaking || voiceLoading) && (
               <button
@@ -288,7 +355,7 @@ export default function InterviewView({
         )}
       </div>
 
-      <div className="sticky bottom-0 -mx-4 border-t border-stone-200/80 bg-[#F7F5F1]/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5 backdrop-blur-sm sm:-mx-6 sm:px-6">
+      <div className="sticky bottom-0 -mx-5 border-t border-stone-200/80 bg-[#F7F5F1]/95 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5 backdrop-blur-sm sm:-mx-6 sm:px-6">
         <button
           type="button"
           onClick={handlePrimary}

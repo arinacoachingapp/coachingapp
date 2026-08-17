@@ -11,7 +11,7 @@ import AuthCallbackPage from '@/pages/AuthCallbackPage'
 
 export default function App() {
   return (
-    <div className="min-h-dvh overscroll-none">
+    <div className="min-h-dvh overflow-x-hidden overscroll-none">
       <Routes>
         <Route
           path="/"
