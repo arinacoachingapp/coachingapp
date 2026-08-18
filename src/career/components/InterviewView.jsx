@@ -39,6 +39,7 @@ export default function InterviewView({
     speaking,
     loading: voiceLoading,
     playbackBlocked,
+    error: ttsError,
     supported: ttsSupported,
   } = useSpeechSynthesis()
   const speakRef = useRef(speak)
@@ -236,6 +237,10 @@ export default function InterviewView({
               </button>
             )}
           </div>
+        )}
+
+        {readAloud && ttsError && (
+          <p className="mt-3 text-xs text-red-600">{ttsError}</p>
         )}
 
         {showAnswerBox && (

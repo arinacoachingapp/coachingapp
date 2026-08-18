@@ -19,11 +19,6 @@ export function isMediaRecorderSupported() {
   return !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder)
 }
 
-export function isSpeechSynthesisSupported() {
-  if (typeof window === 'undefined') return false
-  return !!window.speechSynthesis
-}
-
 function pickRecorderMimeType() {
   const candidates = [
     'audio/webm;codecs=opus',
@@ -260,29 +255,13 @@ export function useSpeechRecognition({ onResult, onError, lang = 'en-US' } = {})
   }
 }
 
-function speakWithBrowser(text, { rate = 0.95, pitch = 1 } = {}) {
-  return new Promise((resolve) => {
-    if (!isSpeechSynthesisSupported()) {
-      resolve(false)
-      return
-    }
-
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.rate = rate
-    utterance.pitch = pitch
-    utterance.lang = 'en-US'
-
-    const voices = window.speechSynthesis.getVoices()
-    const preferred =
-      voices.find((v) => v.lang.startsWith('en') && v.name.includes('Samantha')) ||
-      voices.find((v) => v.lang.startsWith('en'))
-    if (preferred) utterance.voice = preferred
-
-    utterance.onend = () => resolve(true)
-    utterance.onerror = () => resolve(false)
-    window.speechSynthesis.speak(utterance)
-  })
+function base64ToAudioBlob(base64, contentType = 'audio/mpeg') {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return new Blob([bytes], { type: contentType || 'audio/mpeg' })
 }
 
 const MAX_AUDIO_CACHE = 12
@@ -301,8 +280,7 @@ function rememberBlob(cache, key, blob) {
 }
 
 /**
- * Prefer ElevenLabs neural TTS; fall back to browser speechSynthesis
- * only when ElevenLabs is unavailable or the API request fails.
+ * ElevenLabs neural TTS only — no browser speechSynthesis fallback.
  */
 export function useSpeechSynthesis() {
   const speakIdRef = useRef(0)
@@ -312,7 +290,8 @@ export function useSpeechSynthesis() {
   const [speaking, setSpeaking] = useState(false)
   const [loading, setLoading] = useState(false)
   const [playbackBlocked, setPlaybackBlocked] = useState(false)
-  const supported = true // always — browser fallback or ElevenLabs
+  const [error, setError] = useState('')
+  const supported = true
 
   const clearPending = useCallback(() => {
     pendingRef.current = null
@@ -327,9 +306,6 @@ export function useSpeechSynthesis() {
   }, [])
 
   const stopPlayback = useCallback(() => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-    }
     stopSharedAudio()
   }, [])
 
@@ -392,13 +368,27 @@ export function useSpeechSynthesis() {
     if (speakId !== speakIdRef.current) return null
 
     const contentType = res.headers.get('content-type') || ''
-    if (res.ok && contentType.includes('audio')) {
-      const blob = await res.blob()
-      if (speakId !== speakIdRef.current) return null
-      rememberBlob(cacheRef.current, key, blob)
-      return blob
+
+    if (res.ok && contentType.includes('json')) {
+      const data = await res.json().catch(() => ({}))
+      if (data.audioBase64) {
+        const blob = base64ToAudioBlob(data.audioBase64, data.contentType)
+        rememberBlob(cacheRef.current, key, blob)
+        return blob
+      }
+      throw new Error(data.error || data.detail || 'Voice API returned no audio')
     }
-    return null
+
+    if (res.ok && (contentType.includes('audio') || contentType.includes('octet-stream'))) {
+      const blob = await res.blob()
+      if (blob.size > 0) {
+        rememberBlob(cacheRef.current, key, blob)
+        return blob
+      }
+    }
+
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || data.detail || `Voice API error (${res.status})`)
   }, [])
 
   /** Warm the TTS cache without playing — useful while the user reads the prompt. */
@@ -424,57 +414,49 @@ export function useSpeechSynthesis() {
       const speakId = speakIdRef.current
       stopPlayback()
       clearPending()
+      setError('')
 
       const isStale = () => speakId !== speakIdRef.current
       const voiceId = options.voiceId
-
-      const playBrowser = async () => {
-        if (isStale()) return false
-        unlockAudioFromUserGesture()
-        getSharedAudio()
-        if (typeof window !== 'undefined' && window.speechSynthesis) {
-          window.speechSynthesis.cancel()
-        }
-        setLoading(false)
-        setSpeaking(true)
-        await speakWithBrowser(text)
-        if (!isStale()) {
-          setSpeaking(false)
-          clearPending()
-        }
-        return true
-      }
-
       const key = audioCacheKey(text, voiceId)
       let blob = cacheRef.current.get(key)
 
+      setSpeaking(true)
+      setLoading(true)
+
       if (!blob) {
-        setSpeaking(true)
-        setLoading(true)
         try {
           const controller = new AbortController()
           abortRef.current = controller
           blob = await fetchAndCacheBlob(text, voiceId, speakId, controller.signal)
-        } catch (error) {
-          if (error?.name === 'AbortError' || isStale()) return false
-          return playBrowser()
+        } catch (err) {
+          if (err?.name === 'AbortError' || isStale()) return false
+          setLoading(false)
+          setSpeaking(false)
+          setError(err.message || 'Could not generate voice')
+          return false
         }
       }
 
       if (isStale()) return false
 
-      if (blob) {
-        const result = await playBlob(blob, speakId)
-        if (isStale()) return false
-        if (result.ok) return true
-        if (result.blocked) {
-          markBlocked(text, voiceId)
-          return false
-        }
-        return playBrowser()
+      if (!blob) {
+        setLoading(false)
+        setSpeaking(false)
+        setError('Could not generate voice')
+        return false
       }
 
-      return playBrowser()
+      const result = await playBlob(blob, speakId)
+      if (isStale()) return false
+      if (result.ok) return true
+      if (result.blocked) {
+        markBlocked(text, voiceId)
+        return false
+      }
+      setSpeaking(false)
+      setError('Could not play voice audio')
+      return false
     },
     [clearPending, fetchAndCacheBlob, markBlocked, playBlob, stopPlayback]
   )
@@ -497,6 +479,7 @@ export function useSpeechSynthesis() {
     speaking,
     loading,
     playbackBlocked,
+    error,
     supported,
     speak,
     prefetch,

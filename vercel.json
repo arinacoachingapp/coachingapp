@@ -2,8 +2,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/api/admin/prompts/:path*", "destination": "/api/admin/prompt-item?path=:path*" },
-    { "source": "/api/admin/admins/:path*", "destination": "/api/admin/admin-item?path=:path*" },
+    { "source": "/api/admin/:path*", "destination": "/api/admin-gateway?path=:path*" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "functions": {
@@ -14,27 +13,13 @@
       "maxDuration": 60
     },
     "api/career/speak.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": "src/career/lib/voices.js"
     },
     "api/career/transcribe.js": {
       "maxDuration": 60
     },
-    "api/admin/me.js": {
-      "maxDuration": 30
-    },
-    "api/admin/settings.js": {
-      "maxDuration": 30
-    },
-    "api/admin/prompts/index.js": {
-      "maxDuration": 30
-    },
-    "api/admin/prompt-item.js": {
-      "maxDuration": 30
-    },
-    "api/admin/admins/index.js": {
-      "maxDuration": 30
-    },
-    "api/admin/admin-item.js": {
+    "api/admin-gateway.js": {
       "maxDuration": 30
     }
   }

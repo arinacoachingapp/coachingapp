@@ -39,13 +39,6 @@ function sendJson(res, status, body) {
   res.end(JSON.stringify(body))
 }
 
-function sendBinary(res, status, contentType, buffer) {
-  res.statusCode = status
-  res.setHeader('Content-Type', contentType)
-  res.setHeader('Cache-Control', 'no-store')
-  res.end(buffer)
-}
-
 function careerApiPlugin(env) {
   return {
     name: 'career-api',
@@ -109,11 +102,7 @@ function careerApiPlugin(env) {
               voiceId: json.voiceId,
               env,
             })
-            if (result.binary) {
-              sendBinary(res, result.status, result.contentType, result.buffer)
-            } else {
-              sendJson(res, result.status, result.body)
-            }
+            sendJson(res, result.status, result.body)
           } catch (error) {
             console.error('Speak error:', error)
             sendJson(res, 500, { error: error.message || 'Internal server error' })

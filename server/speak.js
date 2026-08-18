@@ -5,8 +5,8 @@ import { resolveRuntimeConfig } from './settings/settingsStore.js'
 const FALLBACK_MODEL_ID = 'eleven_multilingual_v2'
 
 /**
- * POST { text, voiceId? } → audio/mpeg binary body
- * Falls back with JSON error if ElevenLabs is not configured.
+ * POST { text, voiceId? } → { audioBase64, contentType }
+ * JSON (not raw MP3) so Vercel serverless cannot mangle the audio body.
  */
 export async function handleSpeak({ authorization, text, voiceId, env }) {
   let supabase
@@ -20,7 +20,7 @@ export async function handleSpeak({ authorization, text, voiceId, env }) {
   if (!apiKey) {
     return {
       status: 503,
-      body: { error: 'ElevenLabs not configured', fallback: 'browser' },
+      body: { error: 'ElevenLabs not configured' },
       binary: false,
     }
   }
@@ -69,7 +69,6 @@ export async function handleSpeak({ authorization, text, voiceId, env }) {
         body: {
           error: 'Voice generation failed',
           detail: errText.slice(0, 300),
-          fallback: 'browser',
         },
         binary: false,
       }
@@ -78,15 +77,16 @@ export async function handleSpeak({ authorization, text, voiceId, env }) {
     const arrayBuffer = await response.arrayBuffer()
     return {
       status: 200,
-      binary: true,
-      contentType: 'audio/mpeg',
-      buffer: Buffer.from(arrayBuffer),
+      body: {
+        audioBase64: Buffer.from(arrayBuffer).toString('base64'),
+        contentType: 'audio/mpeg',
+      },
     }
   } catch (error) {
     console.error('Speak error:', error)
     return {
       status: 500,
-      body: { error: error.message || 'Voice generation failed', fallback: 'browser' },
+      body: { error: error.message || 'Voice generation failed' },
       binary: false,
     }
   }

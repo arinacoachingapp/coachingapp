@@ -1,6 +1,13 @@
 import { handleTranscribe } from '../../server/transcribe.js'
 
-export const config = { maxDuration: 60 }
+export const config = {
+  maxDuration: 60,
+  api: {
+    bodyParser: {
+      sizeLimit: '8mb',
+    },
+  },
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

@@ -61,12 +61,6 @@ app.post('/api/career/speak', async (req, res) => {
       voiceId: req.body?.voiceId,
       env: process.env,
     })
-    if (result.binary) {
-      res.status(result.status)
-      res.setHeader('Content-Type', result.contentType)
-      res.setHeader('Cache-Control', 'no-store')
-      return res.end(result.buffer)
-    }
     res.status(result.status).json(result.body)
   } catch (error) {
     console.error('Speak error:', error)

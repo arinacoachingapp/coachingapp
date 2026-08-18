@@ -16,14 +16,6 @@ export default async function handler(req, res) {
       voiceId: body.voiceId,
       env: process.env,
     })
-
-    if (result.binary) {
-      res.statusCode = result.status
-      res.setHeader('Content-Type', result.contentType)
-      res.setHeader('Cache-Control', 'no-store')
-      return res.end(result.buffer)
-    }
-
     return res.status(result.status).json(result.body)
   } catch (error) {
     console.error('Speak API error:', error)

@@ -76,17 +76,21 @@ export async function handleAdminPrompts({ authorization, env, method, key, body
 
     if (method === 'GET' && !key) {
       await requireAdmin(supabase, user)
-      await ensurePromptDefaults(supabase, user.email)
-      const prompts = await listPrompts(supabase)
+      let prompts = await listPrompts(supabase)
+      if (!prompts.length) {
+        await ensurePromptDefaults(supabase, user.email)
+        prompts = await listPrompts(supabase)
+      }
       return { status: 200, body: { prompts } }
     }
 
     if (method === 'GET' && key) {
       await requireAdmin(supabase, user)
-      await ensurePromptDefaults(supabase, user.email)
-      const prompt = await getPrompt(supabase, key)
+      const [prompt, versions] = await Promise.all([
+        getPrompt(supabase, key),
+        listPromptVersions(supabase, key),
+      ])
       if (!prompt) return { status: 404, body: { error: 'Prompt not found' } }
-      const versions = await listPromptVersions(supabase, key)
       return { status: 200, body: { prompt, versions } }
     }
 

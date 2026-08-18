@@ -45,7 +45,7 @@ npm run dev
 
 ## Voice
 
-- **TTS** — ElevenLabs neural speech via `POST /api/career/speak` (falls back to browser TTS if unset)
+- **TTS** — ElevenLabs neural speech via `POST /api/career/speak` (JSON `{ audioBase64 }`). Requires `ELEVENLABS_API_KEY` on the server (Vercel env), not only locally.
 - **STT** — MediaRecorder → OpenRouter Whisper via `POST /api/career/transcribe` (punctuated text; light polish when needed)
 
 ## Admin prompts
@@ -80,7 +80,7 @@ Editable prompts (stored in `app_prompts` / `app_prompt_versions`):
 - `question_bank` — runtime JSON used by the interview engine
 - `question_bank_authoring` — full YAML design doc (reference)
 
-Until prompts are seeded by an admin opening the panel, the app falls back to the built-in file defaults.
+Until prompts are seeded (first admin list load, or a save), the app falls back to the built-in file defaults.
 
 ## Vercel
 

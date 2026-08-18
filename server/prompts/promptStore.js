@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import { PROMPT_DEFINITIONS } from './defaults.js'
 
 export function getUserSupabase(accessToken, env) {
   const supabaseUrl = env.VITE_SUPABASE_URL
@@ -30,7 +29,6 @@ export async function isAdminEmail(userSupabase, email) {
   const { data, error } = await userSupabase.rpc('is_app_admin')
   if (error) {
     if (/function|does not exist|schema cache/i.test(error.message)) {
-      // Fallback if migration not applied
       const { data: row } = await userSupabase
         .from('app_admins')
         .select('email')
@@ -53,21 +51,33 @@ export async function requireAdmin(userSupabase, user) {
   }
 }
 
-function defaultByKey(key) {
-  return PROMPT_DEFINITIONS.find((d) => d.key === key) || null
+let definitionsPromise = null
+function loadDefinitions() {
+  if (!definitionsPromise) {
+    definitionsPromise = import('./defaults.js').then((mod) => mod.PROMPT_DEFINITIONS)
+  }
+  return definitionsPromise
 }
 
-/** Ensure all default prompts exist (first admin save or first read can trigger). */
+async function defaultByKey(key) {
+  const defs = await loadDefinitions()
+  return defs.find((d) => d.key === key) || null
+}
+
+/** Seed missing prompt rows. One list query; only loads default content if something is missing. */
 export async function ensurePromptDefaults(userSupabase, actorEmail = 'system') {
-  for (const def of PROMPT_DEFINITIONS) {
-    const { data: existing } = await userSupabase
-      .from('app_prompts')
-      .select('key')
-      .eq('key', def.key)
-      .maybeSingle()
+  const { data: existingRows, error } = await userSupabase.from('app_prompts').select('key')
+  if (error) {
+    console.warn('ensurePromptDefaults list failed:', error.message)
+    return
+  }
 
-    if (existing) continue
+  const have = new Set((existingRows || []).map((row) => row.key))
+  const defs = await loadDefinitions()
+  const missing = defs.filter((def) => !have.has(def.key))
+  if (!missing.length) return
 
+  for (const def of missing) {
     const { error: insertError } = await userSupabase.from('app_prompts').insert({
       key: def.key,
       title: def.title,
@@ -79,7 +89,6 @@ export async function ensurePromptDefaults(userSupabase, actorEmail = 'system') 
     })
 
     if (insertError) {
-      // Race or RLS — ignore duplicate
       if (!/duplicate|unique/i.test(insertError.message)) {
         console.warn('ensurePromptDefaults insert failed:', def.key, insertError.message)
       }
@@ -103,21 +112,7 @@ export async function listPrompts(userSupabase) {
     .order('title')
 
   if (error) throw error
-
-  if (!data?.length) {
-    return PROMPT_DEFINITIONS.map((d) => ({
-      key: d.key,
-      title: d.title,
-      description: d.description,
-      format: d.format,
-      current_version: 0,
-      updated_at: null,
-      updated_by_email: null,
-      seeded: false,
-    }))
-  }
-
-  return data
+  return data || []
 }
 
 export async function getPrompt(userSupabase, key) {
@@ -130,7 +125,7 @@ export async function getPrompt(userSupabase, key) {
   if (error) throw error
 
   if (!data) {
-    const def = defaultByKey(key)
+    const def = await defaultByKey(key)
     if (!def) return null
     return {
       key: def.key,
@@ -151,7 +146,8 @@ export async function getPrompt(userSupabase, key) {
 export async function getPromptContent(userSupabase, key) {
   const prompt = await getPrompt(userSupabase, key)
   if (prompt?.content) return prompt.content
-  return defaultByKey(key)?.content || ''
+  const def = await defaultByKey(key)
+  return def?.content || ''
 }
 
 export async function listPromptVersions(userSupabase, key, limit = 50) {
@@ -179,7 +175,7 @@ export async function getPromptVersion(userSupabase, key, version) {
 }
 
 export async function savePrompt(userSupabase, { key, content, changeNote, email }) {
-  const def = defaultByKey(key)
+  const def = await defaultByKey(key)
   const existing = await getPrompt(userSupabase, key)
 
   if (!existing || existing.from_defaults || existing.current_version === 0) {

@@ -2,7 +2,6 @@ import { createClient } from '@supabase/supabase-js'
 import { buildTranscriptForCard } from './interview/interviewEngine.js'
 import { CARD_VERSION, versionTriple } from './interview/versions.js'
 import { loadRuntimePrompts } from './prompts/promptStore.js'
-import { PROMPT_DEFINITIONS } from './prompts/defaults.js'
 import { resolveRuntimeConfig } from './settings/settingsStore.js'
 
 const ROLE_CARD_KEYS = [
@@ -35,7 +34,7 @@ function getUserSupabase(accessToken, env) {
   })
 }
 
-function buildRoleCardPrompt(transcript, interviewState, template) {
+async function buildRoleCardPrompt(transcript, interviewState, template) {
   const qaBlock = transcript
     .map((item) => {
       const probes =
@@ -58,7 +57,11 @@ function buildRoleCardPrompt(transcript, interviewState, template) {
 `
     : ''
 
-  const fallback = PROMPT_DEFINITIONS.find((d) => d.key === 'role_card_p2')?.content || ''
+  let fallback = ''
+  if (!template) {
+    const { PROMPT_DEFINITIONS } = await import('./prompts/defaults.js')
+    fallback = PROMPT_DEFINITIONS.find((d) => d.key === 'role_card_p2')?.content || ''
+  }
   const source = template || fallback
 
   return source.replaceAll('{{META}}', meta).replaceAll('{{TRANSCRIPT}}', qaBlock)
@@ -196,7 +199,7 @@ export async function handleGenerateRoleCard({ authorization, sessionId, env }) 
       openrouterModel = env.OPENROUTER_MODEL || DEFAULT_MODEL
     }
     generatedText = await generateWithOpenRouter(
-      buildRoleCardPrompt(transcript, interviewState, roleCardTemplate),
+      await buildRoleCardPrompt(transcript, interviewState, roleCardTemplate),
       env,
       openrouterModel
     )

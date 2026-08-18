@@ -18,6 +18,13 @@ function parseBody(req) {
   return req.body
 }
 
+function isRealAdminPath(pathname) {
+  return (
+    pathname === '/api/admin' ||
+    /^\/api\/admin\/(me|settings|prompts|admins)(\/|$)/.test(pathname)
+  )
+}
+
 /**
  * Resolve /api/admin/... from a Vercel or Node request.
  * Prefer the real URL — Vercel catch-alls often leave req.query.path empty.
@@ -30,10 +37,8 @@ export function adminPathnameFromRequest(req, mountPath = '/api/admin') {
   const rawUrl = String(req.url || req.originalUrl || '')
   const urlPath = rawUrl.split('?')[0]
 
-  const candidate = headerPath.includes('/api/admin') ? headerPath : urlPath
-  if (/^\/api\/admin\/(me|settings|prompts|admins)(\/|$)/.test(candidate) || candidate === '/api/admin') {
-    return candidate
-  }
+  if (isRealAdminPath(headerPath)) return headerPath
+  if (isRealAdminPath(urlPath)) return urlPath
 
   const q = req.query?.path
   const fromQuery =
@@ -49,7 +54,9 @@ export function adminPathnameFromRequest(req, mountPath = '/api/admin') {
   if (fromQuery) return `${mount}/${fromQuery}`
 
   const extra = urlPath.replace(/^\//, '').replace(/\/$/, '')
-  if (extra && extra !== '[...path]') return `${mount}/${extra}`
+  if (extra && extra !== '[...path]' && extra !== 'api/admin-gateway' && extra !== 'admin-gateway') {
+    return `${mount}/${extra}`
+  }
 
   return mount
 }
