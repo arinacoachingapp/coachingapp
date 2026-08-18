@@ -7,13 +7,7 @@ import { handleGenerateRoleCard } from './server/generateRoleCard.js'
 import { handleInterviewTurn } from './server/interviewTurn.js'
 import { handleSpeak } from './server/speak.js'
 import { handleTranscribe } from './server/transcribe.js'
-import {
-  handleAdminAdmins,
-  handleAdminMe,
-  handleAdminPromptVersion,
-  handleAdminPrompts,
-  handleAdminSettings,
-} from './server/adminHandlers.js'
+import { routeAdminRequest } from './server/adminRouter.js'
 import { handleCareerSettings } from './server/careerSettings.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -50,79 +44,6 @@ function sendBinary(res, status, contentType, buffer) {
   res.setHeader('Content-Type', contentType)
   res.setHeader('Cache-Control', 'no-store')
   res.end(buffer)
-}
-
-async function routeAdmin(req, res, env, pathname) {
-  const auth = req.headers.authorization
-  const sub = pathname.replace(/^\/api\/admin\/?/, '').replace(/\/$/, '')
-
-  if (sub === 'me' && req.method === 'GET') {
-    return handleAdminMe({ authorization: auth, env })
-  }
-
-  if (sub === 'settings') {
-    const body = req.method === 'GET' ? {} : await readJsonBody(req)
-    return handleAdminSettings({
-      authorization: auth,
-      env,
-      method: req.method,
-      body,
-    })
-  }
-
-  if (sub === 'admins') {
-    const body = req.method === 'GET' ? {} : await readJsonBody(req)
-    return handleAdminAdmins({
-      authorization: auth,
-      env,
-      method: req.method,
-      body,
-    })
-  }
-
-  if (sub.startsWith('admins/')) {
-    const email = decodeURIComponent(sub.slice('admins/'.length))
-    return handleAdminAdmins({
-      authorization: auth,
-      env,
-      method: req.method,
-      email,
-    })
-  }
-
-  if (sub === 'prompts') {
-    return handleAdminPrompts({
-      authorization: auth,
-      env,
-      method: req.method,
-      key: null,
-      body: {},
-    })
-  }
-
-  if (sub.startsWith('prompts/')) {
-    const rest = sub.slice('prompts/'.length)
-    const parts = rest.split('/').filter(Boolean)
-    const key = decodeURIComponent(parts[0])
-    if (parts[1] === 'versions' && parts[2] && req.method === 'GET') {
-      return handleAdminPromptVersion({
-        authorization: auth,
-        env,
-        key,
-        version: parts[2],
-      })
-    }
-    const body = ['PUT', 'POST'].includes(req.method) ? await readJsonBody(req) : {}
-    return handleAdminPrompts({
-      authorization: auth,
-      env,
-      method: req.method,
-      key,
-      body,
-    })
-  }
-
-  return { status: 404, body: { error: 'Not found' } }
 }
 
 function careerApiPlugin(env) {
@@ -242,7 +163,16 @@ function careerApiPlugin(env) {
 
         if (url?.startsWith('/api/admin')) {
           try {
-            const result = await routeAdmin(req, res, env, url)
+            const body = ['PUT', 'POST', 'PATCH'].includes(req.method)
+              ? await readJsonBody(req)
+              : {}
+            const result = await routeAdminRequest({
+              method: req.method,
+              pathname: url.split('?')[0],
+              authorization: req.headers.authorization,
+              body,
+              env,
+            })
             sendJson(res, result.status, result.body)
           } catch (error) {
             console.error('Admin API error:', error)

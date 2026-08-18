@@ -1,4 +1,4 @@
-import { adminPathnameFromRequest, routeAdminRequest } from '../../server/adminRouter.js'
+import { handleAdminSettings } from '../../server/adminHandlers.js'
 
 export const config = { maxDuration: 30 }
 
@@ -16,16 +16,15 @@ function parseBody(req) {
 
 export default async function handler(req, res) {
   try {
-    const result = await routeAdminRequest({
-      method: req.method,
-      pathname: adminPathnameFromRequest(req),
+    const result = await handleAdminSettings({
       authorization: req.headers.authorization,
-      body: parseBody(req),
       env: process.env,
+      method: req.method,
+      body: parseBody(req),
     })
     return res.status(result.status).json(result.body)
   } catch (error) {
-    console.error('Admin API error:', error)
+    console.error('Admin settings error:', error)
     return res.status(500).json({ error: error.message || 'Internal server error' })
   }
 }

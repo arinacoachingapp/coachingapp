@@ -17,6 +17,18 @@
     "api/career/transcribe.js": {
       "maxDuration": 60
     },
+    "api/admin/me.js": {
+      "maxDuration": 30
+    },
+    "api/admin/settings.js": {
+      "maxDuration": 30
+    },
+    "api/admin/prompts.js": {
+      "maxDuration": 30
+    },
+    "api/admin/admins.js": {
+      "maxDuration": 30
+    },
     "api/admin/[...path].js": {
       "maxDuration": 30
     }
