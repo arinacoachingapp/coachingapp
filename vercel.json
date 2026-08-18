@@ -2,6 +2,8 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/api/admin/prompts/:path*", "destination": "/api/admin/prompt-item?path=:path*" },
+    { "source": "/api/admin/admins/:path*", "destination": "/api/admin/admin-item?path=:path*" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "functions": {
@@ -23,13 +25,16 @@
     "api/admin/settings.js": {
       "maxDuration": 30
     },
-    "api/admin/prompts.js": {
+    "api/admin/prompts/index.js": {
       "maxDuration": 30
     },
-    "api/admin/admins.js": {
+    "api/admin/prompt-item.js": {
       "maxDuration": 30
     },
-    "api/admin/[...path].js": {
+    "api/admin/admins/index.js": {
+      "maxDuration": 30
+    },
+    "api/admin/admin-item.js": {
       "maxDuration": 30
     }
   }

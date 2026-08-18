@@ -6,16 +6,33 @@ import {
   handleAdminSettings,
 } from './adminHandlers.js'
 
+function parseBody(req) {
+  if (req.body == null) return {}
+  if (typeof req.body === 'string') {
+    try {
+      return JSON.parse(req.body || '{}')
+    } catch {
+      return {}
+    }
+  }
+  return req.body
+}
+
 /**
  * Resolve /api/admin/... from a Vercel or Node request.
  * Prefer the real URL — Vercel catch-alls often leave req.query.path empty.
  */
-export function adminPathnameFromRequest(req) {
+export function adminPathnameFromRequest(req, mountPath = '/api/admin') {
+  const mount = String(mountPath || '/api/admin').replace(/\/$/, '')
+  const headerPath = String(
+    req.headers?.['x-invoke-path'] || req.headers?.['x-forwarded-uri'] || ''
+  ).split('?')[0]
   const rawUrl = String(req.url || req.originalUrl || '')
   const urlPath = rawUrl.split('?')[0]
 
-  if (urlPath.includes('/api/admin')) {
-    return urlPath
+  const candidate = headerPath.includes('/api/admin') ? headerPath : urlPath
+  if (/^\/api\/admin\/(me|settings|prompts|admins)(\/|$)/.test(candidate) || candidate === '/api/admin') {
+    return candidate
   }
 
   const q = req.query?.path
@@ -29,12 +46,28 @@ export function adminPathnameFromRequest(req) {
           .map((p) => decodeURIComponent(String(p)))
           .join('/')
 
-  if (fromQuery) return `/api/admin/${fromQuery}`
+  if (fromQuery) return `${mount}/${fromQuery}`
 
   const extra = urlPath.replace(/^\//, '').replace(/\/$/, '')
-  if (extra && extra !== '[...path]') return `/api/admin/${extra}`
+  if (extra && extra !== '[...path]') return `${mount}/${extra}`
 
-  return '/api/admin'
+  return mount
+}
+
+export async function handleVercelAdmin(req, res, mountPath = '/api/admin') {
+  try {
+    const result = await routeAdminRequest({
+      method: req.method,
+      pathname: adminPathnameFromRequest(req, mountPath),
+      authorization: req.headers.authorization,
+      body: parseBody(req),
+      env: process.env,
+    })
+    return res.status(result.status).json(result.body)
+  } catch (error) {
+    console.error('Admin API error:', error)
+    return res.status(500).json({ error: error.message || 'Internal server error' })
+  }
 }
 
 export async function routeAdminRequest({ method, pathname, authorization, body, env }) {
