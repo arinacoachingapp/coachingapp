@@ -14,7 +14,7 @@
     },
     "api/career/speak.js": {
       "maxDuration": 60,
-      "includeFiles": "src/career/lib/voices.js"
+      "includeFiles": "shared/voices.js"
     },
     "api/career/transcribe.js": {
       "maxDuration": 60

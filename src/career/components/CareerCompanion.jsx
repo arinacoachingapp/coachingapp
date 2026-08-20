@@ -26,7 +26,8 @@ import {
   VOICE_STORAGE_KEY,
   isAllowedVoiceId,
 } from '../lib/voices'
-import { fetchAdminMe, fetchCareerSettings } from '@/lib/adminApi'
+import { fetchCareerSettings } from '@/lib/adminApi'
+import { supabase } from '@/lib/supabase'
 import { unlockAudioFromUserGesture, attachAudioUnlockListeners } from '../lib/voice'
 
 const VIEWS = {
@@ -98,13 +99,25 @@ export default function CareerCompanion() {
 
   useEffect(() => {
     let cancelled = false
-    fetchAdminMe()
-      .then((me) => {
-        if (!cancelled) setIsAdmin(!!me.isAdmin)
-      })
-      .catch(() => {
+    // Client → Supabase directly (same path as sessions). Avoids Vercel cold start for the Admin link.
+    ;(async () => {
+      try {
+        if (!supabase) {
+          if (!cancelled) setIsAdmin(false)
+          return
+        }
+        const { data, error } = await supabase.rpc('is_app_admin')
+        if (cancelled) return
+        if (error) {
+          console.warn('is_app_admin failed:', error.message)
+          setIsAdmin(false)
+          return
+        }
+        setIsAdmin(!!data)
+      } catch {
         if (!cancelled) setIsAdmin(false)
-      })
+      }
+    })()
     return () => {
       cancelled = true
     }

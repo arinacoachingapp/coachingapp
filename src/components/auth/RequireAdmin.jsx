@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthProvider'
-import { fetchAdminMe } from '@/lib/adminApi'
+import { supabase } from '@/lib/supabase'
 
 export default function RequireAdmin({ children }) {
   const { isAuthenticated, loading, supabaseConfigured } = useAuth()
@@ -21,11 +21,19 @@ export default function RequireAdmin({ children }) {
     ;(async () => {
       setChecking(true)
       try {
-        const me = await fetchAdminMe()
-        if (!cancelled) {
-          setIsAdmin(!!me.isAdmin)
-          if (!me.isAdmin) setError('Your account is not on the admin list.')
+        if (!supabase) {
+          if (!cancelled) setError('Database not configured')
+          return
         }
+        const { data, error: rpcError } = await supabase.rpc('is_app_admin')
+        if (cancelled) return
+        if (rpcError) {
+          setError(rpcError.message)
+          setIsAdmin(false)
+          return
+        }
+        setIsAdmin(!!data)
+        if (!data) setError('Your account is not on the admin list.')
       } catch (err) {
         if (!cancelled) setError(err.message)
       } finally {

@@ -376,7 +376,9 @@ export function useSpeechSynthesis() {
         rememberBlob(cacheRef.current, key, blob)
         return blob
       }
-      throw new Error(data.error || data.detail || 'Voice API returned no audio')
+      throw new Error(
+        [data.error, data.detail].filter(Boolean).join(' — ') || 'Voice API returned no audio'
+      )
     }
 
     if (res.ok && (contentType.includes('audio') || contentType.includes('octet-stream'))) {
@@ -388,7 +390,8 @@ export function useSpeechSynthesis() {
     }
 
     const data = await res.json().catch(() => ({}))
-    throw new Error(data.error || data.detail || `Voice API error (${res.status})`)
+    const message = [data.error, data.detail].filter(Boolean).join(' — ')
+    throw new Error(message || `Voice API error (${res.status})`)
   }, [])
 
   /** Warm the TTS cache without playing — useful while the user reads the prompt. */

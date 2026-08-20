@@ -1,4 +1,4 @@
-import { INTERVIEW_VOICES, DEFAULT_INTERVIEW_VOICE_ID } from '../../src/career/lib/voices.js'
+import { INTERVIEW_VOICES, DEFAULT_INTERVIEW_VOICE_ID } from '../../shared/voices.js'
 
 /** Admin-selectable OpenRouter chat models for interviews + role cards. */
 export const OPENROUTER_MODEL_OPTIONS = [
