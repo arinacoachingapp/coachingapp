@@ -105,7 +105,15 @@ export default function AdminPromptsPage() {
       setLoading(true)
       setError('')
       try {
-        await loadList()
+        const data = await listAdminPrompts()
+        if (cancelled) return
+        const rows = data.prompts || []
+        setPrompts(rows)
+        if (!selectedKey && rows[0]) {
+          setSelectedKey(rows[0].key)
+        }
+        // Prefetch Models tab data so switching tabs is instant
+        fetchAdminSettings().catch(() => {})
       } catch (err) {
         if (!cancelled) setError(err.message)
       } finally {
@@ -115,6 +123,8 @@ export default function AdminPromptsPage() {
     return () => {
       cancelled = true
     }
+    // intentionally only on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
